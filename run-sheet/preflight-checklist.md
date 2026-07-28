@@ -25,7 +25,15 @@ Three checkpoints. Do them in order. The whole point is that by 12:30 on the day
 cd "D:\AI workshop\clinical-ai-agent-session\prototypes"
 py -3.11 test_grounding.py     # must print ALL PASS
 py -3.11 test_agents.py        # must print ALL PASS
+py -3.11 agents\provider.py    # must say OK, not FAILED
 ```
+
+- [ ] **`provider.py` self-test says OK** ← do not skip this one
+
+> ⚠️ A key that authenticates is **not** a key that works. An OpenAI account with
+> no credit lists models happily and then returns 429 on every completion, and the
+> app degrades to mock responses rather than erroring — so the failure is silent
+> and you would only notice on stage. The self-test is what catches it.
 
 - [ ] Both test scripts print **ALL PASS**
 - [ ] App runs locally: `py -3.11 -m streamlit run app.py`
@@ -48,6 +56,7 @@ py -3.11 test_agents.py        # must print ALL PASS
 - [ ] Browser zoom set so the app is readable from the back — usually **125–150%**
 - [ ] Laptop on **phone hotspot**, not auditorium wifi. Do not trust conference wifi.
 - [ ] Loaded and confirmed working: builder tab, deployed app tab, terminal, deck
+- [ ] **Deployed app sidebar reads LIVE, not OFFLINE** — `py -3.11 tools\check_live_app.py`
 - [ ] Laptop **plugged into power**
 - [ ] **Sleep and screensaver disabled.** Notifications off. Do Not Disturb on.
 - [ ] Phone silenced

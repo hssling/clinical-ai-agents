@@ -2,18 +2,23 @@
 
 One job: turn a prompt into text, and never let the demo die.
 
-Three providers, chosen automatically from whichever key is present:
+Four backends, chosen automatically from whichever key is present, in this order:
 
-    OPENROUTER_API_KEY  ->  OpenRouter  (many models, generous free tier)
+    OPENAI_API_KEY      ->  OpenAI      (paid, most reliable -- wins if set)
+    OPENROUTER_API_KEY  ->  OpenRouter  (many models, free tier, throttles)
     GOOGLE_API_KEY      ->  Gemini      (Google AI Studio)
-    neither             ->  MOCK        (offline, pre-written responses)
+    none of the above   ->  MOCK        (offline, pre-written responses)
+
+The order is deliberate: dropping in a paid OpenAI key on the day takes over
+automatically, with no code or config change, and removes the free-tier
+throttling risk from the live demo.
 
 MOCK_MODE=1 forces the last one regardless. That is the on-stage fallback: if
 auditorium wifi fails, set the flag and every prototype keeps working with no
 network and no key. The audience cannot tell the difference.
 
-Only OpenRouter and Gemini know anything provider-specific, and both live at the
-bottom of this file. Nothing else in the codebase knows which model is answering.
+All provider-specific code lives at the bottom of this file. Nothing else in
+the codebase knows or cares which model is answering.
 """
 
 from __future__ import annotations
@@ -43,6 +48,16 @@ OPENROUTER_FALLBACKS = [
 # Setting OPENROUTER_MODEL pins one model and disables the chain.
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "").strip()
 
+# OpenAI. Paid, so throttling is not the concern here -- the chain exists
+# because model availability varies between accounts and tiers, and a 404 on
+# the first choice should not end the demo.
+OPENAI_FALLBACKS = [
+    "gpt-4.1-mini",   # cheap, fast, easily good enough for these prompts
+    "gpt-4o-mini",
+    "gpt-4.1",
+]
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "").strip()
+
 GEMINI_MODEL = os.environ.get("AGENT_MODEL", "gemini-2.0-flash")
 
 TIMEOUT = 60
@@ -61,9 +76,12 @@ def _env(name: str) -> str:
 
 
 def active_provider() -> str:
-    """Which backend will actually answer: 'openrouter', 'gemini', or 'mock'."""
+    """Which backend will answer: 'openai', 'openrouter', 'gemini', or 'mock'."""
     if _env("MOCK_MODE") in {"1", "true", "True"}:
         return "mock"
+    # Paid first. Adding an OpenAI key on the day should silently take over.
+    if _env("OPENAI_API_KEY"):
+        return "openai"
     if _env("OPENROUTER_API_KEY"):
         return "openrouter"
     if _env("GOOGLE_API_KEY"):
@@ -78,6 +96,8 @@ def is_mock_mode() -> bool:
 def mode_label() -> str:
     """Human-readable mode, shown in the app sidebar so you always know which you're in."""
     provider = active_provider()
+    if provider == "openai":
+        return f"LIVE · OpenAI · {last_model_used or OPENAI_MODEL or OPENAI_FALLBACKS[0]}"
     if provider == "openrouter":
         model = last_model_used or OPENROUTER_MODEL or OPENROUTER_FALLBACKS[0]
         return f"LIVE · OpenRouter · {model.split('/')[-1]}"
@@ -103,6 +123,8 @@ def complete(prompt: str, *, system: str = "", mock: str = "", temperature: floa
         return textwrap.dedent(mock).strip()
 
     try:
+        if provider == "openai":
+            return _openai(prompt, system=system, temperature=temperature)
         if provider == "openrouter":
             return _openrouter(prompt, system=system, temperature=temperature)
         return _gemini(prompt, system=system, temperature=temperature)
@@ -133,34 +155,27 @@ def _post(url: str, payload: dict, headers: dict) -> dict:
         raise ProviderError(f"HTTP {exc.code}: {detail}") from exc
 
 
-def _openrouter(prompt: str, *, system: str, temperature: float) -> str:
-    """OpenAI-compatible chat completions. Stdlib only -- no extra dependency.
+def _chat_completions(label: str, url: str, models: list[str], headers: dict,
+                      prompt: str, system: str, temperature: float) -> str:
+    """The OpenAI /chat/completions shape, which OpenRouter also speaks.
 
-    Walks the model chain and returns the first real answer. A rate-limited
-    free model is the normal case here, not an exception, so moving on to the
-    next one is the expected behaviour rather than error handling.
+    Walks the model list and returns the first real answer. For OpenRouter a
+    throttled model is the normal case rather than an exception, so moving on
+    is expected behaviour, not error handling; for OpenAI the same mechanism
+    covers models an account cannot access.
+
+    Stdlib only -- no provider SDK is needed to run this app.
     """
     global last_model_used
 
     messages = ([{"role": "system", "content": system}] if system else []) + \
                [{"role": "user", "content": prompt}]
-    headers = {
-        "Authorization": f"Bearer {_env('OPENROUTER_API_KEY')}",
-        # Attribution headers OpenRouter uses for its dashboards.
-        "HTTP-Referer": "https://clinical-ai-agents.streamlit.app",
-        "X-Title": "Clinical AI Agents (CME demo)",
-    }
-
-    models = [OPENROUTER_MODEL] if OPENROUTER_MODEL else OPENROUTER_FALLBACKS
     failures = []
 
     for model in models:
         try:
-            data = _post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {"model": model, "messages": messages, "temperature": temperature},
-                headers,
-            )
+            data = _post(url, {"model": model, "messages": messages,
+                               "temperature": temperature}, headers)
             answer = (data["choices"][0]["message"]["content"] or "").strip()
             if answer:
                 last_model_used = model
@@ -169,7 +184,73 @@ def _openrouter(prompt: str, *, system: str, temperature: float) -> str:
         except ProviderError as exc:
             failures.append(f"{model}: {exc}"[:160])
 
-    raise ProviderError("All OpenRouter models failed — " + " | ".join(failures))
+    raise ProviderError(f"All {label} models failed — " + " | ".join(failures))
+
+
+def _openai(prompt: str, *, system: str, temperature: float) -> str:
+    return _chat_completions(
+        "OpenAI",
+        "https://api.openai.com/v1/chat/completions",
+        [OPENAI_MODEL] if OPENAI_MODEL else OPENAI_FALLBACKS,
+        {"Authorization": f"Bearer {_env('OPENAI_API_KEY')}"},
+        prompt, system, temperature,
+    )
+
+
+def _openrouter(prompt: str, *, system: str, temperature: float) -> str:
+    return _chat_completions(
+        "OpenRouter",
+        "https://openrouter.ai/api/v1/chat/completions",
+        [OPENROUTER_MODEL] if OPENROUTER_MODEL else OPENROUTER_FALLBACKS,
+        {
+            "Authorization": f"Bearer {_env('OPENROUTER_API_KEY')}",
+            # Attribution headers OpenRouter uses for its dashboards.
+            "HTTP-Referer": "https://clinical-ai-agents.streamlit.app",
+            "X-Title": "Clinical AI Agents (CME demo)",
+        },
+        prompt, system, temperature,
+    )
+
+
+def self_test() -> int:
+    """Report which backend is active and prove it can actually answer.
+
+        python agents/provider.py
+
+    Run this after setting a key, and again on the morning of the session. A key
+    that authenticates is not the same as a key that works -- an account with no
+    credit lists models happily and then returns 429 on every completion.
+    """
+    provider = active_provider()
+    print(f"Active provider : {provider}")
+    print(f"Label           : {mode_label()}")
+    print("Keys present    : " + ", ".join(
+        name for name in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_API_KEY")
+        if _env(name)) or "Keys present    : none")
+
+    if provider == "mock":
+        print("\nRunning OFFLINE. This is fine for the demo -- every agent works,")
+        print("only the prose is pre-written. Set a key to go live.")
+        return 0
+
+    print("\nSending a real request...")
+    try:
+        answer = complete("Reply with the single word: ok", system="Be terse.")
+        print(f"OK — {last_model_used or 'model'} answered: {answer[:60]!r}")
+        return 0
+    except ProviderError as exc:
+        print(f"FAILED — {exc}")
+        text = str(exc)
+        if "429" in text and "quota" in text.lower():
+            print("\n>> The key is valid but the account has no usable credit.")
+            print("   OpenAI: add billing at platform.openai.com/settings/organization/billing")
+            print("   Until then the app silently falls back to mock responses.")
+        elif "401" in text:
+            print("\n>> The key was rejected. Check it was copied whole.")
+        elif "429" in text:
+            print("\n>> Rate limited. For OpenRouter free models this is routine —")
+            print("   run tools/probe_models.py to find one that is currently up.")
+        return 1
 
 
 def _gemini(prompt: str, *, system: str, temperature: float) -> str:
@@ -188,3 +269,7 @@ def _gemini(prompt: str, *, system: str, temperature: float) -> str:
         {},
     )
     return (data["candidates"][0]["content"]["parts"][0]["text"] or "").strip()
+
+
+if __name__ == "__main__":
+    raise SystemExit(self_test())

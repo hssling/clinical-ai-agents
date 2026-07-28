@@ -32,8 +32,14 @@ First build takes 2–4 minutes.
 **App menu (⋮)** → **Settings** → **Secrets**, then paste **one** of these:
 
 ```toml
-# Recommended — OpenRouter. Free models, and the app falls back through
-# a chain of them when one is throttled.
+# Most reliable — OpenAI. Requires billing on the account.
+OPENAI_API_KEY = "sk-proj-..."
+MOCK_MODE = "0"
+```
+
+```toml
+# Free — OpenRouter. The app falls back through a chain of free
+# models when one is throttled.
 OPENROUTER_API_KEY = "sk-or-v1-..."
 MOCK_MODE = "0"
 ```
@@ -44,7 +50,17 @@ GOOGLE_API_KEY = "AIza..."
 MOCK_MODE = "0"
 ```
 
-Save. The app restarts automatically. Providers are checked in the order **OpenRouter → Gemini → mock**, so if both keys are present, OpenRouter wins.
+Save. The app restarts automatically.
+
+Providers are checked in the order **OpenAI → OpenRouter → Gemini → mock**. That order is deliberate: **adding a paid OpenAI key on the day takes over automatically**, with no code or config change, and removes free-tier throttling from the live demo. Leave the OpenRouter key in place as the layer beneath it.
+
+> ⚠️ **An OpenAI key that authenticates is not a key that works.** An account with no credit lists models happily and then returns `429 — you exceeded your current quota` on every completion. The app degrades to mock responses rather than erroring, so this failure is *silent*. Add billing at platform.openai.com **before** the day, and verify:
+>
+> ```bash
+> python prototypes/agents/provider.py
+> ```
+>
+> It prints the active provider, sends a real request, and names the exact problem if one fails.
 
 **If you skip this, the app still works** — it detects the missing key and runs in offline mock mode. Worth knowing: a revoked or exhausted key degrades the app rather than breaking it.
 

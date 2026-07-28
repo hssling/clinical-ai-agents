@@ -146,17 +146,27 @@ py -3.11 -m streamlit run streamlit_app.py
 ```
 </details>
 
-For live mode, set **one** key — providers are checked in the order OpenRouter → Gemini → mock:
+For live mode, set **one** key. Providers are checked in this order:
 
 ```bash
-export OPENROUTER_API_KEY="sk-or-v1-..."   # openrouter.ai/keys  (recommended)
-# or
-export GOOGLE_API_KEY="AIza..."            # aistudio.google.com/apikey
+export OPENAI_API_KEY="sk-proj-..."        # platform.openai.com  (most reliable, paid)
+export OPENROUTER_API_KEY="sk-or-v1-..."   # openrouter.ai/keys   (free tier)
+export GOOGLE_API_KEY="AIza..."            # aistudio.google.com  (free tier)
 ```
+
+`OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `GOOGLE_API_KEY` → mock. The order means **dropping in a paid key on the day silently takes over** — no code or config change.
 
 Or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill it in.
 
-> **Why OpenRouter is the default:** its free models are shared capacity and throttle without warning — measured here, one model returned 0/3 while four others returned 3/3 in the same minute. So the provider walks a **fallback chain** and takes the first model that answers. Check the chain before you rely on it: `python tools/probe_models.py`.
+**Verify whatever you set** — this is the single most useful command in the repo:
+
+```bash
+python prototypes/agents/provider.py
+```
+
+It names the active provider, sends a real request, and diagnoses the failure if there is one.
+
+> **Two traps this catches.** OpenRouter's free models are shared capacity and throttle without warning — measured here, one returned 0/3 while four others returned 3/3 in the same minute, so the provider walks a **fallback chain** (`python tools/probe_models.py` re-measures it). And an OpenAI key on an account with **no credit** lists models happily, then returns 429 on every completion — the app degrades to mock rather than erroring, so that failure is otherwise *silent*.
 
 **Verify — both must print `ALL PASS`** (this is what CI runs):
 
