@@ -30,36 +30,34 @@ jobs:
             exit 0
           fi
 
-          echo "Checking $APP_URL"
+          # Hit /healthz, NOT the app root. The root 303-redirects into a loop
+          # that curl cannot resolve (it needs a browser), so following it just
+          # burns 50 redirects and exits 47. /healthz returns plain JSON.
+          health="${APP_URL%/}/healthz"
+          echo "Checking $health"
 
-          # Capture status and exit code SEPARATELY. Combining them with `|| echo`
-          # concatenates the two values into nonsense like "303000".
-          code=$(curl -sS -L --max-time 60 -o /tmp/body -w '%{http_code}' "$APP_URL")
+          # `set -e` is on, so a failing curl would kill the step before we can
+          # report anything useful. Capture status and exit code separately.
+          set +e
+          code=$(curl -sS --max-time 45 -o /tmp/body -w '%{http_code}' "$health")
           rc=$?
+          set -e
 
-          echo "curl exit=$rc  final HTTP=$code"
+          echo "curl exit=$rc  HTTP=$code"
+          echo "body: $(head -c 200 /tmp/body)"
 
           if [ "$rc" -ne 0 ]; then
             echo "::error::curl failed (exit $rc) — host unreachable or timed out."
             exit 1
           fi
 
-          # Streamlit redirects before serving, so accept any 2xx after -L.
-          case "$code" in
-            2??) : ;;
-            *)
-              echo "::error::App returned HTTP $code — it may be broken or removed."
-              head -c 500 /tmp/body || true
-              exit 1
-              ;;
-          esac
-
-          # A sleeping Community Cloud app still returns 200 with a wake screen,
-          # so check the body rather than trusting the status code alone.
-          if grep -qi "get this app back up\|has gone to sleep" /tmp/body; then
-            echo "::warning::App is ASLEEP. It will wake on first visit, but a cold"
-            echo "start takes 30-60 seconds. Open it 10 minutes before the session."
-            exit 0
+          if [ "$code" != "200" ] || ! grep -q '"status":"ok"' /tmp/body; then
+            echo "::error::App is not healthy (HTTP $code). It may be broken or removed."
+            exit 1
           fi
 
-          echo "App is awake and serving."
+          echo "App is reachable and reporting healthy."
+          echo
+          echo "Note: this proves the host is serving the app. It does NOT prove the"
+          echo "app is awake, in LIVE mode, or that GuideBot still refuses correctly."
+          echo "For that, run:  python tools/check_live_app.py"
