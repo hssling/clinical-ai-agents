@@ -1,0 +1,10 @@
+# Normalise to LF in the repository. Authored on Windows, run on Linux in CI
+# and on Streamlit Cloud -- without this, shell scripts in workflows break.
+* text=auto eol=lf
+
+# Binary — never touch these.
+*.pptx binary
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.mp4  binary

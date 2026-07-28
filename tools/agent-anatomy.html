@@ -1,0 +1,695 @@
+<title>The Anatomy of a Clinical AI Agent</title>
+
+<style>
+  :root {
+    --ground:      #E9EEF2;
+    --plate:       #F7FAFB;
+    --ink:         #16232E;
+    --ink-soft:    #4A5C69;
+    --ink-faint:   #8194A1;
+    --rule:        #C6D2DA;
+    --accent:      #0B7C74;
+    --accent-soft: #D4E8E5;
+    --arterial:    #A8272D;
+    --arterial-bg: #F7E2E2;
+    --specimen:    #8A6410;
+    --shadow:      rgba(22, 35, 46, .10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:      #0A1015;
+      --plate:       #121B22;
+      --ink:         #DDE8EE;
+      --ink-soft:    #9DB0BC;
+      --ink-faint:   #647987;
+      --rule:        #293945;
+      --accent:      #45C9BC;
+      --accent-soft: #123833;
+      --arterial:    #E8767B;
+      --arterial-bg: #33191B;
+      --specimen:    #D6AC55;
+      --shadow:      rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0A1015; --plate:#121B22; --ink:#DDE8EE; --ink-soft:#9DB0BC;
+    --ink-faint:#647987; --rule:#293945; --accent:#45C9BC; --accent-soft:#123833;
+    --arterial:#E8767B; --arterial-bg:#33191B; --specimen:#D6AC55;
+    --shadow:rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"] {
+    --ground:#E9EEF2; --plate:#F7FAFB; --ink:#16232E; --ink-soft:#4A5C69;
+    --ink-faint:#8194A1; --rule:#C6D2DA; --accent:#0B7C74; --accent-soft:#D4E8E5;
+    --arterial:#A8272D; --arterial-bg:#F7E2E2; --specimen:#8A6410;
+    --shadow:rgba(22,35,46,.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.62 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* --- specimen label: the recurring utility mark --- */
+  .label {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--specimen); font-weight: 600;
+  }
+
+  /* ---------------------------------------------------------- plate header */
+  header {
+    padding: 68px 0 44px; border-bottom: 1px solid var(--rule);
+    margin-bottom: 52px;
+  }
+  header .label { display: block; margin-bottom: 20px; }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-weight: 400; font-size: clamp(34px, 6.4vw, 60px);
+    line-height: 1.08; letter-spacing: -.018em; margin: 0 0 22px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .standfirst {
+    font-size: clamp(16px, 2.2vw, 19px); color: var(--ink-soft);
+    max-width: 60ch; margin: 0;
+  }
+  .credit {
+    margin-top: 30px; font-size: 13.5px; color: var(--ink-faint);
+    padding-top: 18px; border-top: 1px solid var(--rule); max-width: 60ch;
+  }
+
+  /* ---------------------------------------------------------- sections */
+  section { margin-bottom: 76px; scroll-margin-top: 20px; }
+  h2 {
+    font-family: Georgia, "Iowan Old Style", serif; font-weight: 400;
+    font-size: clamp(24px, 3.6vw, 34px); line-height: 1.2;
+    margin: 0 0 14px; letter-spacing: -.012em; text-wrap: balance;
+  }
+  .intro { color: var(--ink-soft); max-width: 62ch; margin: 0 0 34px; }
+  p { max-width: 64ch; }
+
+  /* ---------------------------------------------------------- the plate */
+  .plate {
+    background: var(--plate); border: 1px solid var(--rule);
+    border-radius: 3px; padding: 34px 30px;
+    box-shadow: 0 1px 3px var(--shadow);
+  }
+  .specimen {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  }
+  .structure {
+    position: relative; text-align: left; cursor: pointer;
+    background: transparent; color: inherit; font: inherit;
+    border: 1px solid var(--rule); border-radius: 2px;
+    padding: 20px 18px 18px; transition: border-color .18s, background .18s;
+  }
+  .structure:hover { border-color: var(--accent); }
+  .structure:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .structure[aria-selected="true"] {
+    border-color: var(--accent); background: var(--accent-soft);
+  }
+  /* Leader line down from the selected structure into the legend below. */
+  .structure[aria-selected="true"]::after {
+    content: ""; position: absolute; left: 50%; bottom: -15px;
+    width: 1px; height: 14px; background: var(--accent);
+  }
+  .numeral {
+    font-family: Georgia, serif; font-size: 30px; line-height: 1;
+    color: var(--accent); display: block; margin-bottom: 10px;
+  }
+  .structure h3 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 19px;
+    margin: 0 0 4px; letter-spacing: -.008em;
+  }
+  .latin {
+    font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* The legend: one shared panel below the plate, as on a real anatomical plate. */
+  .legend {
+    margin-top: 29px; padding-top: 24px; border-top: 1px solid var(--rule);
+    display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start;
+  }
+  .legend .numeral { margin: 0; font-size: 42px; }
+  .legend h3 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 21px;
+    margin: 0 0 3px; letter-spacing: -.008em;
+  }
+  .legend .latin { display: block; margin-bottom: 13px; }
+  .note { font-size: 15.5px; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+  .note strong { color: var(--ink); font-weight: 600; }
+  .note .parallel {
+    display: block; margin-top: 12px; padding-top: 12px;
+    border-top: 1px dotted var(--rule);
+    font-size: 14.5px; color: var(--specimen); font-style: italic;
+  }
+  @media (max-width: 520px) {
+    .legend { grid-template-columns: 1fr; gap: 10px; }
+    .legend .numeral { font-size: 30px; }
+  }
+
+  /* ---------------------------------------------------------- the loop */
+  .loop { display: grid; gap: 0; margin-top: 8px; }
+  .beat {
+    display: grid; grid-template-columns: 46px 1fr; gap: 18px;
+    padding: 16px 0; border-bottom: 1px solid var(--rule);
+  }
+  .beat:last-child { border-bottom: 0; }
+  .beat .n {
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    color: var(--ink-faint); padding-top: 4px; letter-spacing: .06em;
+  }
+  .beat h4 {
+    margin: 0 0 3px; font-size: 16.5px; font-weight: 600;
+    font-family: Georgia, serif; letter-spacing: -.005em;
+  }
+  .beat p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+  .beat.terminal { background: var(--arterial-bg); margin: 0 -14px; padding: 16px 14px; }
+  .beat.terminal .n, .beat.terminal h4 { color: var(--arterial); }
+
+  /* ---------------------------------------------------------- dissection */
+  .dissect { display: grid; gap: 0; }
+  .field { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  input[type=text] {
+    flex: 1 1 260px; min-width: 0; font: inherit; font-size: 16px;
+    padding: 13px 15px; border: 1px solid var(--rule); border-radius: 2px;
+    background: var(--plate); color: var(--ink);
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  button.ask {
+    font: inherit; font-weight: 600; font-size: 15px; padding: 13px 24px;
+    border: 0; border-radius: 2px; background: var(--accent); color: var(--plate);
+    cursor: pointer;
+  }
+  button.ask:hover { filter: brightness(1.1); }
+  button.ask:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+  .chip {
+    font: inherit; font-size: 13px; padding: 7px 13px; cursor: pointer;
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); border-radius: 100px;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chip.out { color: var(--arterial); border-color: var(--arterial); }
+
+  /* the gauge -- score against threshold */
+  .gauge { margin: 4px 0 20px; }
+  .track {
+    position: relative; height: 34px; background: var(--plate);
+    border: 1px solid var(--rule); border-radius: 2px; overflow: hidden;
+  }
+  .fill {
+    position: absolute; inset: 0 auto 0 0; width: 0;
+    background: var(--accent); opacity: .3;
+    transition: width .45s cubic-bezier(.4,0,.2,1), background .3s;
+  }
+  .fill.refuse { background: var(--arterial); }
+  .threshold {
+    position: absolute; top: -4px; bottom: -4px; left: 30%;
+    width: 2px; background: var(--ink);
+  }
+  .scale {
+    display: flex; justify-content: space-between; margin-top: 7px;
+    font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+    color: var(--ink-faint); font-variant-numeric: tabular-nums;
+  }
+  .readout {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    padding: 0 14px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+
+  .verdict { border-left: 3px solid var(--accent); padding: 16px 0 16px 20px; }
+  .verdict.refuse { border-left-color: var(--arterial); }
+  .verdict h4 {
+    margin: 0 0 8px; font-size: 15px; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--accent);
+  }
+  .verdict.refuse h4 { color: var(--arterial); }
+  .verdict p { margin: 0 0 10px; font-size: 15.5px; }
+  .cite {
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    color: var(--ink-faint); display: block; margin-top: 12px;
+  }
+  .terms { margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
+  .term {
+    display: inline-block; font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px; padding: 3px 8px; margin: 0 5px 5px 0; border-radius: 2px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .term.miss { background: var(--arterial-bg); color: var(--arterial); text-decoration: line-through; }
+
+  /* ---------------------------------------------------------- tests */
+  .tests { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .test { background: var(--plate); padding: 22px 20px; }
+  .test .label { display: block; margin-bottom: 10px; }
+  .test h3 { font-family: Georgia, serif; font-weight: 400; font-size: 18px; margin: 0 0 8px; }
+  .test p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+  .test.key { background: var(--arterial-bg); }
+  .test.key .label { color: var(--arterial); }
+
+  /* ---------------------------------------------------------- recipe */
+  ol.recipe { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+  ol.recipe li {
+    counter-increment: step; position: relative;
+    padding: 0 0 22px 44px; border-left: 1px solid var(--rule);
+    margin-left: 13px;
+  }
+  ol.recipe li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.recipe li::before {
+    content: counter(step); position: absolute; left: -13px; top: -2px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--ground); border: 1px solid var(--accent); color: var(--accent);
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    display: grid; place-items: center;
+  }
+  ol.recipe strong { display: block; font-size: 16.5px; margin-bottom: 3px; }
+  ol.recipe span { font-size: 15px; color: var(--ink-soft); }
+
+  pre {
+    background: var(--plate); border: 1px solid var(--rule); border-left: 2px solid var(--accent);
+    padding: 18px 20px; overflow-x: auto; margin: 18px 0 0; border-radius: 2px;
+    font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6;
+    color: var(--ink-soft);
+  }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 26px;
+    font-size: 13.5px; color: var(--ink-faint);
+  }
+  footer strong { color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="label">Plate I &nbsp;·&nbsp; CME in Artificial Intelligence in Healthcare</span>
+  <h1>The Anatomy of a <em>Clinical AI Agent</em></h1>
+  <p class="standfirst">
+    Four structures, one loop, and a single mechanism that decides whether it answers
+    you or admits it does not know. Dissect it below — the scoring is running on your
+    own device.
+  </p>
+  <p class="credit">
+    Companion to <strong>Build Your Own Clinical AI Agent</strong> · SIMS&amp;RH Tumkur,
+    12 August 2026 · Dr. Siddalingaiah H S, Department of Community Medicine.
+    Educational material. Not a medical device.
+  </p>
+</header>
+
+<!-- ============================================================ THE PARTS -->
+<section>
+  <h2>The four structures</h2>
+  <p class="intro">
+    Every agent — clinical or otherwise — is assembled from these four. Select a
+    structure to read its legend.
+  </p>
+
+  <div class="plate">
+    <div class="specimen" id="specimen" role="tablist" aria-label="Agent structures"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</section>
+
+<!-- ============================================================= THE LOOP -->
+<section>
+  <h2>The loop</h2>
+  <p class="intro">
+    A chatbot answers once. An agent circles: it plans, acts, checks, and goes
+    again — until the goal is met or something forces it to stop. That last beat
+    is the one most descriptions leave out.
+  </p>
+
+  <div class="plate">
+    <div class="loop">
+      <div class="beat">
+        <span class="n">i</span>
+        <div><h4>You set the goal</h4><p>“Screen these 400 abstracts against my inclusion criteria.”</p></div>
+      </div>
+      <div class="beat">
+        <span class="n">ii</span>
+        <div><h4>It plans</h4><p>Decides what to do first and what it needs in order to do it.</p></div>
+      </div>
+      <div class="beat">
+        <span class="n">iii</span>
+        <div><h4>It acts</h4><p>Uses a tool — reads a document, runs a calculation, queries a system.</p></div>
+      </div>
+      <div class="beat">
+        <span class="n">iv</span>
+        <div><h4>It checks</h4><p>Goal met? If not, back to ii. If yes, stop and report.</p></div>
+      </div>
+      <div class="beat terminal">
+        <span class="n">v</span>
+        <div>
+          <h4>It is forced to stop</h4>
+          <p>A step budget, a red-flag rule, or a human checkpoint. An agent that
+             cannot stop is not a feature — it is an incident waiting to be written up.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== THE DISSECTION -->
+<section>
+  <h2>Dissection: why it refuses</h2>
+  <p class="intro">
+    This is the mechanism demonstrated live in the session, running here in your
+    browser. Ask it something. Before any AI model is consulted, your question is
+    scored against 21 sections of Indian national programme guidelines. Score
+    below <strong>0.30</strong> and it refuses outright — no model, no guess.
+  </p>
+
+  <div class="plate dissect">
+    <div class="field">
+      <input type="text" id="q" placeholder="Ask about TB, immunisation, or NCD screening…"
+             aria-label="Clinical question" autocomplete="off">
+      <button class="ask" id="go">Score it</button>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="gauge">
+      <div class="track">
+        <div class="fill" id="fill"></div>
+        <div class="threshold" title="Refusal threshold: 0.30"></div>
+        <div class="readout" id="readout">Ask something to begin</div>
+      </div>
+      <div class="scale">
+        <span>0.00 — nothing matched</span>
+        <span>↑ 0.30 threshold</span>
+        <span>1.00 — fully covered</span>
+      </div>
+    </div>
+
+    <div id="verdict"></div>
+  </div>
+
+  <p style="margin-top:22px;font-size:15px;color:var(--ink-soft)">
+    Notice what this is: <strong>ordinary arithmetic, not artificial intelligence</strong>.
+    That is the point. A safety rule written inside a prompt is a request the model
+    may decline to honour. A safety rule written in the code around the model is
+    a rule — it costs nothing, it cannot be talked out of it, and it works with the
+    wifi unplugged.
+  </p>
+</section>
+
+<!-- ============================================================= THE TESTS -->
+<section>
+  <h2>The three tests</h2>
+  <p class="intro">
+    Run these on any AI tool before you trust it with a clinical question —
+    including one you built yourself.
+  </p>
+
+  <div class="tests">
+    <div class="test">
+      <span class="label">Test I · Recall</span>
+      <h3>Ask it something it should know</h3>
+      <p>It should answer <em>and</em> cite a source you can open and check. “The AI said so” is not a source.</p>
+    </div>
+    <div class="test key">
+      <span class="label">Test II · Refusal — the one that matters</span>
+      <h3>Ask it something outside its documents</h3>
+      <p>It should refuse. A tool that never refuses is guessing and not telling you.
+         Put this to any vendor: <strong>“show me it refusing to answer.”</strong>
+         The pause before the reply tells you most of what you need to know.</p>
+    </div>
+    <div class="test">
+      <span class="label">Test III · Restraint</span>
+      <h3>Ask it to treat a named patient</h3>
+      <p>It should decline to give individualised advice. Decision support informs a clinician; it does not replace one.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ THE RECIPE -->
+<section>
+  <h2>Build one — thirty minutes, no code</h2>
+  <p class="intro">
+    A laptop, a browser, a free account. Nothing to install.
+  </p>
+
+  <ol class="recipe">
+    <li><strong>Pick a builder</strong><span>Google AI Studio (Gems), ChatGPT (Custom GPT), or Claude (Projects). All free to start.</span></li>
+    <li><strong>Create an agent and name it</strong><span>It exists now. It is useless, but it exists.</span></li>
+    <li><strong>Write the instructions</strong><span>This is the clinical work, and it is plain English. Take your time over it.</span></li>
+    <li><strong>Upload your documents</strong><span>Guidelines, protocols, SOPs. These become the only thing it is allowed to draw on.</span></li>
+    <li><strong>Run the three tests</strong><span>Especially the second.</span></li>
+    <li><strong>Share it — only once it passes</strong><span>Never before.</span></li>
+  </ol>
+
+  <pre>You are a clinical guideline assistant for [YOUR DEPARTMENT].
+
+Rules:
+1. Answer ONLY from the documents provided. They are your only
+   source of truth.
+2. Cite the section after every factual claim.
+3. If the documents do not cover it, say exactly:
+   "This is not covered in the guidelines I have been given."
+   Do not use outside knowledge to fill the gap.
+4. Never give individualised treatment advice for a named patient.
+5. Be brief. Three to five sentences.</pre>
+
+  <p style="margin-top:20px;font-size:15px;color:var(--ink-soft)">
+    <strong>Rule 3 is the whole game.</strong> Without it you have a confident
+    guesser. With it you have something you can defend.
+  </p>
+</section>
+
+<footer>
+  <strong>Before you paste anything into a public AI service:</strong> remove names,
+  phone numbers, hospital numbers, addresses and full dates of birth. Age, sex and
+  clinical detail are fine. If you would not put it on a noticeboard, do not put it
+  in a chatbot. Under the DPDP Act 2023 you carry duties as a data fiduciary —
+  “the vendor handles that” is not a defence.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------- structures */
+const STRUCTURES = [
+  { n: "I", name: "The model", latin: "Encephalon",
+    note: "<strong>The reasoning engine.</strong> GPT, Gemini, Claude. It arrives knowing a great deal about medicine in general and nothing whatsoever about your hospital. It is also the most swappable part of the whole assembly — which is exactly why you should not build anything around one particular model.",
+    parallel: "Like an intern's medical knowledge: broad, genuine, and entirely unaware of local protocol." },
+  { n: "II", name: "Instructions", latin: "Regulae",
+    note: "<strong>What it must and must not do — written in plain English, not code.</strong> This is where safety lives, and it is the reason a clinician can build one of these while a programmer alone cannot. When you watch someone build an agent, watch how long they spend here. It should be most of the time.",
+    parallel: "Like your department's standing orders — the part that encodes judgement." },
+  { n: "III", name: "Tools", latin: "Instrumenta",
+    note: "<strong>What it can actually reach:</strong> documents, calculators, databases, the internet, another system. Give it the wrong tools and it is confidently useless. Give it too many and you have built something you can no longer predict.",
+    parallel: "Access to the chart and the ward. An intern denied both is decorative." },
+  { n: "IV", name: "Memory", latin: "Memoria",
+    note: "<strong>What it carries across the conversation.</strong> Without it, every question restarts from nothing and the loop cannot exist. With too much of it, old context contaminates new decisions — which is its own clinical hazard.",
+    parallel: "The case file. Also the reason a stale one is dangerous." }
+];
+
+const specimen = document.getElementById("specimen");
+const legend = document.getElementById("legend");
+const tabs = [];
+
+function selectStructure(i) {
+  tabs.forEach((t, j) => t.setAttribute("aria-selected", String(i === j)));
+  const s = STRUCTURES[i];
+  legend.innerHTML =
+    '<span class="numeral">' + s.n + "</span>" +
+    "<div><h3>" + s.name + '</h3><span class="latin">' + s.latin + "</span>" +
+    '<p class="note">' + s.note + '<span class="parallel">' + s.parallel + "</span></p></div>";
+}
+
+STRUCTURES.forEach((s, i) => {
+  const btn = document.createElement("button");
+  btn.className = "structure";
+  btn.type = "button";
+  btn.setAttribute("role", "tab");
+  btn.setAttribute("aria-selected", "false");
+  btn.setAttribute("aria-controls", "legend");
+  btn.innerHTML = '<span class="numeral">' + s.n + "</span><h3>" + s.name +
+                  '</h3><span class="latin">' + s.latin + "</span>";
+  btn.addEventListener("click", () => selectStructure(i));
+  btn.addEventListener("keydown", e => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = (i + step + STRUCTURES.length) % STRUCTURES.length;
+    tabs[next].focus();
+    selectStructure(next);
+  });
+  tabs.push(btn);
+  specimen.appendChild(btn);
+});
+
+selectStructure(0);
+
+/* ------------------------------------------------------------------ corpus
+   The same 21 sections used by the live prototypes, condensed. */
+const SECTIONS = [
+  ["S1","National Immunization Schedule","Vaccines at birth","BCG, Hepatitis B birth dose and OPV-0 are given at birth, or within 24 hours for the Hepatitis B birth dose. BCG may be given up to one year of age if missed. OPV-0 only within the first 15 days."],
+  ["S2","National Immunization Schedule","Primary schedule, 6 to 14 weeks","At 6, 10 and 14 weeks the infant receives OPV and Pentavalent doses. Rotavirus vaccine at 6, 10 and 14 weeks where introduced. Fractional IPV at 6 and 14 weeks intradermally. Pneumococcal conjugate vaccine at 6 and 14 weeks with a booster at 9 months."],
+  ["S3","National Immunization Schedule","Nine to twelve months","Measles-Rubella first dose at 9 to 12 completed months. Japanese Encephalitis first dose at 9 to 12 months in endemic districts. Vitamin A first dose at 9 months."],
+  ["S4","National Immunization Schedule","Sixteen to twenty-four months","Measles-Rubella second dose, DPT first booster, OPV booster and Japanese Encephalitis second dose in endemic districts at 16 to 24 months. Vitamin A doses 2 to 9 every 6 months up to 5 years."],
+  ["S5","National Immunization Schedule","School-age and adolescent doses","DPT second booster at 5 to 6 years. Tetanus and adult diphtheria vaccine at 10 years and again at 16 years."],
+  ["S6","National Immunization Schedule","Maternal immunisation","Td early in pregnancy with a second dose four weeks later. A single Td booster suffices if two doses were received in a pregnancy within the last three years."],
+  ["S7","National Immunization Schedule","Contraindications and precautions","Minor illness, low-grade fever and mild diarrhoea are not contraindications. Severe anaphylaxis to a previous dose of the same vaccine is absolute. Live vaccines are deferred in severe immunosuppression."],
+  ["T1","NTEP Tuberculosis","Presumptive TB definition","Cough of two weeks or more, fever of two weeks or more, significant unintentional weight loss, haemoptysis, or enlarged cervical lymph nodes make a person a presumptive pulmonary tuberculosis case requiring evaluation."],
+  ["T2","NTEP Tuberculosis","Diagnostic algorithm","Upfront nucleic acid amplification testing is the recommended first diagnostic test for all presumptive cases. Chest X-ray is a screening and triage tool. Sputum smear microscopy is retained for treatment follow-up. Universal drug susceptibility testing for every confirmed case."],
+  ["T3","NTEP Tuberculosis","Treatment regimen for drug-sensitive TB","Drug-sensitive tuberculosis is treated with a daily fixed-dose combination. The intensive phase is two months of isoniazid, rifampicin, pyrazinamide and ethambutol. The continuation phase is four months of isoniazid, rifampicin and ethambutol. Dosing is weight-band based."],
+  ["T4","NTEP Tuberculosis","Extension of continuation phase","The continuation phase may be extended by three months in tuberculosis of the spine with neurological involvement, tuberculous meningitis, and disseminated disease, on the treating physician's decision."],
+  ["T5","NTEP Tuberculosis","Follow-up and outcome definitions","Follow-up sputum examination at the end of the intensive phase and at the end of treatment. Cure is a confirmed case smear or culture negative at the end of treatment. Treatment failure is sputum remaining or becoming positive at four months or later."],
+  ["T6","NTEP Tuberculosis","Contact tracing and preventive therapy","All household contacts of a pulmonary tuberculosis patient must be screened. Preventive therapy is offered to eligible contacts after active disease is excluded, including children under five years and people living with HIV."],
+  ["T7","NTEP Tuberculosis","Nutritional support","Nikshay Poshan Yojana provides direct benefit transfer for nutritional support to every notified tuberculosis patient for the duration of treatment."],
+  ["N1","NP-NCD Hypertension and Diabetes","Population-based screening","Population-based screening for hypertension, diabetes and three common cancers is offered to all individuals aged 30 years and above, delivered through Health and Wellness Centres using the Community Based Assessment Checklist administered by the ASHA."],
+  ["N2","NP-NCD Hypertension and Diabetes","Diagnostic thresholds for hypertension","Hypertension is diagnosed when systolic blood pressure is 140 mmHg or higher, or diastolic is 90 mmHg or higher, on two separate occasions. A single reading of 140/90 or above is screen-positive requiring confirmation, not a diagnosis."],
+  ["N3","NP-NCD Hypertension and Diabetes","Diagnostic thresholds for diabetes","Diabetes is diagnosed at fasting plasma glucose of 126 mg/dL or higher, two-hour post-load glucose of 200 mg/dL or higher, or HbA1c of 6.5 percent or higher. Random glucose of 200 mg/dL with classical symptoms is diagnostic. Random capillary glucose of 140 mg/dL at screening is screen-positive."],
+  ["N4","NP-NCD Hypertension and Diabetes","Referral criteria","Refer to a higher facility for blood pressure of 180/110 mmHg or above, evidence of target organ damage, suspected secondary hypertension, blood glucose above 300 mg/dL, diabetic foot ulcer, or failure to reach control targets on maximal facility-level therapy."],
+  ["N5","NP-NCD Hypertension and Diabetes","Treatment initiation at HWC level","First-line management is lifestyle modification for all screen-positive individuals. Pharmacological therapy at Health and Wellness Centre level follows the state standard treatment protocol, typically initiated with a single agent, reviewed by the medical officer at four weeks."],
+  ["N6","NP-NCD Hypertension and Diabetes","Follow-up intervals","Individuals on treatment with controlled parameters are followed monthly for drug refill and reviewed by the medical officer at least every three months. Screen-negative individuals aged 30 and above are rescreened annually."],
+  ["N7","NP-NCD Hypertension and Diabetes","Recording and reporting","All screening, diagnosis and follow-up is recorded in the NCD application and the individual's ABHA-linked record where available."]
+];
+
+const THRESHOLD = 0.30;
+
+/* ------------------------------------------------- retrieval (ported 1:1) */
+const STOP = new Set(("a an and any are as at be by can do does for from given has have how i if in is it may must of on or " +
+  "should than that the then there this to was we what when where which who why will with you your patient case please tell").split(" "));
+
+function singular(w) {
+  if (w.length > 4 && w.endsWith("ies")) return w.slice(0, -3) + "y";
+  if (w.length > 4 && w.endsWith("s") && !w.endsWith("ss")) return w.slice(0, -1);
+  return w;
+}
+function tokenise(text) {
+  return (text.toLowerCase().match(/[a-z0-9]+/g) || [])
+    .filter(w => !STOP.has(w) && w.length > 2).map(singular);
+}
+
+/* IDF, plus the weight given to a word the corpus has never seen. That
+   out-of-vocabulary weight is what makes off-topic questions score low:
+   an unknown word is the rarest word of all, and can never be matched. */
+const TOTAL = SECTIONS.length;
+const OOV = Math.log(1 + TOTAL);
+const IDF = (() => {
+  const counts = {};
+  for (const [, , title, text] of SECTIONS)
+    for (const t of new Set(tokenise(title + " " + text)))
+      counts[t] = (counts[t] || 0) + 1;
+  const idf = {};
+  for (const t in counts) idf[t] = Math.log(1 + TOTAL / counts[t]);
+  return idf;
+})();
+
+function search(query) {
+  const terms = [...new Set(tokenise(query))];
+  if (!terms.length) return null;
+
+  const weights = {};
+  terms.forEach(t => weights[t] = IDF[t] !== undefined ? IDF[t] : OOV);
+  const total = terms.reduce((a, t) => a + weights[t], 0) || 1;
+
+  let best = null;
+  for (const [id, doc, title, text] of SECTIONS) {
+    const body = new Set(tokenise(text));
+    const head = new Set(tokenise(title));
+    const matched = terms.filter(t => body.has(t) || head.has(t));
+    if (!matched.length) continue;
+    const coverage = matched.reduce((a, t) => a + weights[t], 0) / total;
+    const boost = 1 + 0.25 * (matched.filter(t => head.has(t)).length / terms.length);
+    const score = Math.min(coverage * boost, 1);
+    if (!best || score > best.score)
+      best = { score, id, doc, title, text, matched: new Set(matched) };
+  }
+  return { best, terms, weights };
+}
+
+/* ------------------------------------------------------------------- view */
+const fill = document.getElementById("fill");
+const readout = document.getElementById("readout");
+const verdict = document.getElementById("verdict");
+const input = document.getElementById("q");
+
+function esc(s) {
+  return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+function run(question) {
+  const result = search(question);
+
+  if (!result || !result.terms.length) {
+    fill.style.width = "0"; fill.classList.remove("refuse");
+    readout.textContent = "Ask something to begin";
+    verdict.innerHTML = ""; return;
+  }
+
+  const best = result.best;
+  const score = best ? best.score : 0;
+  const refuses = score < THRESHOLD;
+
+  fill.style.width = (score * 100).toFixed(1) + "%";
+  fill.classList.toggle("refuse", refuses);
+  readout.textContent = "score " + score.toFixed(2) +
+    "  ·  threshold " + THRESHOLD.toFixed(2) +
+    "  ·  " + (refuses ? "REFUSE" : "ANSWER");
+
+  const chips = result.terms.map(t => {
+    const hit = best && best.matched.has(t);
+    return '<span class="term' + (hit ? "" : " miss") + '">' + esc(t) + "</span>";
+  }).join("");
+
+  if (refuses) {
+    verdict.innerHTML =
+      '<div class="verdict refuse"><h4>Refused</h4>' +
+      "<p>“This is not covered in the guidelines I have been given.”</p>" +
+      "<p>Too little of your question is supported by the loaded documents, so the " +
+      "agent stops here. <strong>No AI model was consulted</strong> — there was nothing " +
+      "reliable to consult it about.</p>" +
+      '<div class="terms">Words in your question, matched and unmatched:<br>' + chips + "</div></div>";
+  } else {
+    verdict.innerHTML =
+      '<div class="verdict"><h4>Answered — grounded</h4>' +
+      "<p>" + esc(best.text) + "</p>" +
+      '<span class="cite">[' + best.id + "] " + esc(best.doc) + " — " + esc(best.title) + "</span>" +
+      '<div class="terms">Words in your question, matched and unmatched:<br>' + chips + "</div></div>";
+  }
+}
+
+document.getElementById("go").addEventListener("click", () => run(input.value));
+input.addEventListener("keydown", e => { if (e.key === "Enter") run(input.value); });
+
+const EXAMPLES = [
+  ["What is the treatment regimen for drug-sensitive TB?", false],
+  ["When is the measles-rubella second dose given?", false],
+  ["What blood pressure needs referral?", false],
+  ["Who counts as a presumptive TB case?", false],
+  ["What is the dose of adrenaline in cardiac arrest?", true],
+  ["How do I manage a snake bite?", true]
+];
+const chipRow = document.getElementById("chips");
+EXAMPLES.forEach(([text, outOfScope]) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (outOfScope ? " out" : "");
+  b.type = "button";
+  b.textContent = outOfScope ? "✕ " + text : text;
+  b.addEventListener("click", () => { input.value = text; run(text); });
+  chipRow.appendChild(b);
+});
+
+run(EXAMPLES[0][0]);
+input.value = EXAMPLES[0][0];
+</script>

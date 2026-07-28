@@ -1,0 +1,14 @@
+# Matches the slide deck, so the app and the projected slides read as one thing.
+[theme]
+primaryColor = "#0E8F84"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F5F8"
+textColor = "#142C4F"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+# Prototypes only accept pasted text -- no uploads, so keep the limit small.
+maxUploadSize = 5

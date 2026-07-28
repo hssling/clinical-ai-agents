@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------
+  # The safety guardrails. If these fail, the live demo is not safe to run.
+  # ---------------------------------------------------------------------
+  agents:
+    name: Agent safety tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+
+      - name: Grounding guardrail — must refuse out-of-scope questions
+        working-directory: prototypes
+        env:
+          MOCK_MODE: "1"
+        run: python test_grounding.py
+
+      - name: All four agents
+        working-directory: prototypes
+        env:
+          MOCK_MODE: "1"
+        run: python test_agents.py
+
+  # ---------------------------------------------------------------------
+  # Catches the failure that would otherwise surface on Streamlit Cloud:
+  # a missing dependency or an import error that only bites at startup.
+  # ---------------------------------------------------------------------
+  boot:
+    name: App boots headlessly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+
+      - name: Launch the deployed entry point
+        env:
+          MOCK_MODE: "1"
+        run: |
+          streamlit run streamlit_app.py \
+            --server.headless true --server.port 8501 &
+          echo "PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for it to answer
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8501/_stcore/health > /dev/null; then
+              echo "App healthy after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::App did not become healthy within 30s"
+          exit 1
+
+      - name: Confirm it serves the page
+        run: |
+          curl -sf http://localhost:8501 | head -c 400
+          echo
+
+  # ---------------------------------------------------------------------
+  # Rebuilds the deck and the handout PDFs so the latest are always
+  # downloadable from the Actions run, even from a machine without Python.
+  # ---------------------------------------------------------------------
+  materials:
+    name: Build slides and handouts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install authoring tools
+        run: pip install -r requirements-dev.txt
+
+      - name: Install Chromium for PDF rendering
+        run: python -m playwright install --with-deps chromium
+
+      - name: Build the slide deck
+        working-directory: slides
+        run: python build_deck.py
+
+      - name: Build the handout PDFs
+        working-directory: tools
+        run: python make_pdfs.py
+
+      - name: Sanity-check the cost figures still compute
+        working-directory: tools
+        run: python cost_calculator.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-materials
+          retention-days: 90
+          path: |
+            slides/*.pptx
+            handout/*.pdf

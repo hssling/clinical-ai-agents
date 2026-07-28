@@ -1,0 +1,4 @@
+# Runtime dependencies for the deployed app.
+# Streamlit Community Cloud installs from this file at the repository root.
+streamlit>=1.40
+google-genai>=1.0

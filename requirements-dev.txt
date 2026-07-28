@@ -1,0 +1,7 @@
+# Authoring tools -- NOT needed to run the app.
+# These build the slide deck and the handout PDFs.
+-r requirements.txt
+
+python-pptx>=1.0      # slides/build_deck.py
+markdown>=3.5         # tools/make_pdfs.py
+playwright>=1.40      # tools/make_pdfs.py (renders PDFs via Chromium)

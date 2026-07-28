@@ -1,0 +1,24 @@
+# Secrets -- never commit these
+.env
+.streamlit/secrets.toml
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+
+# Local recordings for the fallback plan (large, and personal to the speaker)
+run-sheet/recordings/
+*.mp4

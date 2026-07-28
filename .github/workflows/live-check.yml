@@ -1,0 +1,51 @@
+name: Live app check
+
+# Streamlit Community Cloud redeploys automatically on every push to main --
+# that is the CD. What it does NOT tell you is whether the result is actually
+# reachable, or whether the app has gone to sleep through inactivity.
+#
+# This closes that gap: it pings the live URL, and in the week before the
+# session it runs daily so a broken deployment surfaces early rather than at
+# 12:30 in front of an auditorium.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:30 UTC = 12:00 IST, daily. Adjust or remove after the session.
+    - cron: "30 6 * * *"
+
+jobs:
+  reachable:
+    name: Is the live app up?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the app responds
+        env:
+          APP_URL: ${{ vars.STREAMLIT_APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::notice::STREAMLIT_APP_URL is not set yet."
+            echo "Set it once the app is deployed:"
+            echo "  gh variable set STREAMLIT_APP_URL --body 'https://your-app.streamlit.app'"
+            exit 0
+          fi
+
+          echo "Checking $APP_URL"
+          code=$(curl -s -o /tmp/body -w "%{http_code}" -L --max-time 45 "$APP_URL" || echo 000)
+          echo "HTTP $code"
+
+          if [ "$code" != "200" ]; then
+            echo "::error::App returned HTTP $code — it may be asleep, broken, or removed."
+            head -c 500 /tmp/body || true
+            exit 1
+          fi
+
+          # A sleeping Community Cloud app still returns 200 with a wake screen,
+          # so check the body rather than trusting the status code alone.
+          if grep -qi "get this app back up\|has gone to sleep" /tmp/body; then
+            echo "::warning::App is ASLEEP. It will wake on first visit, but a cold"
+            echo "start takes 30-60 seconds. Open it 10 minutes before the session."
+            exit 0
+          fi
+
+          echo "App is awake and serving."
