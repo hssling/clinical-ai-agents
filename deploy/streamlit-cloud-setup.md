@@ -29,18 +29,40 @@ First build takes 2–4 minutes.
 
 ## 2 · Add your API key
 
-**App menu (⋮)** → **Settings** → **Secrets**, then paste:
+**App menu (⋮)** → **Settings** → **Secrets**, then paste **one** of these:
 
 ```toml
-GOOGLE_API_KEY = "your-key-from-aistudio.google.com/apikey"
+# Recommended — OpenRouter. Free models, and the app falls back through
+# a chain of them when one is throttled.
+OPENROUTER_API_KEY = "sk-or-v1-..."
 MOCK_MODE = "0"
 ```
 
-Save. The app restarts automatically.
+```toml
+# Alternative — Google Gemini
+GOOGLE_API_KEY = "AIza..."
+MOCK_MODE = "0"
+```
 
-**If you skip this, the app still works** — it detects the missing key and runs in offline mock mode. Useful to know: it means a revoked or exhausted key degrades the app rather than breaking it.
+Save. The app restarts automatically. Providers are checked in the order **OpenRouter → Gemini → mock**, so if both keys are present, OpenRouter wins.
 
-> 🔑 Secrets live in Streamlit, never in the repo. `.streamlit/secrets.toml` is gitignored. A key committed to a public repo is scraped within minutes — if it ever happens, revoke it immediately; rewriting git history is not enough.
+**If you skip this, the app still works** — it detects the missing key and runs in offline mock mode. Worth knowing: a revoked or exhausted key degrades the app rather than breaking it.
+
+### Why OpenRouter is the better default here
+
+Free models on OpenRouter are shared capacity and **throttle upstream without warning**. Measured on this project within a single minute: one model returned 0/3 successes while four others returned 3/3. A single free model is not something to stand in front of an audience with.
+
+So `provider.py` walks a chain (`OPENROUTER_FALLBACKS`) and takes the first model that answers. Re-check availability before the session:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."
+python tools/probe_models.py          # test the configured chain
+python tools/probe_models.py --all    # discover and test every free model
+```
+
+It reports reliability **and** whether output is clean — "reasoning" models leak their thinking into the answer, which looks terrible projected and breaks the structured-output agents. Reorder `OPENROUTER_FALLBACKS` in `prototypes/agents/provider.py` if the tool suggests it.
+
+> 🔑 Secrets live in Streamlit, never in the repo. `.streamlit/secrets.toml` is gitignored. A key committed to a public repo is scraped within minutes — Google now auto-revokes keys it detects as leaked. If it happens, revoke and reissue; rewriting git history is not enough.
 
 ---
 

@@ -87,6 +87,8 @@ clinical-ai-agents/
 ├─ tools/
 │   ├─ agent-anatomy.html    interactive companion page — the QR destination
 │   ├─ cost_calculator.py    what it costs, in rupees, with assumptions shown
+│   ├─ probe_models.py       which free models are usable RIGHT NOW
+│   ├─ check_live_app.py     pre-flight check on the deployed app
 │   └─ make_pdfs.py          regenerate the handout PDFs after editing
 │
 └─ deploy/
@@ -144,7 +146,17 @@ py -3.11 -m streamlit run streamlit_app.py
 ```
 </details>
 
-For live mode, get a free key at https://aistudio.google.com/apikey and either export `GOOGLE_API_KEY`, or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill it in.
+For live mode, set **one** key — providers are checked in the order OpenRouter → Gemini → mock:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."   # openrouter.ai/keys  (recommended)
+# or
+export GOOGLE_API_KEY="AIza..."            # aistudio.google.com/apikey
+```
+
+Or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill it in.
+
+> **Why OpenRouter is the default:** its free models are shared capacity and throttle without warning — measured here, one model returned 0/3 while four others returned 3/3 in the same minute. So the provider walks a **fallback chain** and takes the first model that answers. Check the chain before you rely on it: `python tools/probe_models.py`.
 
 **Verify — both must print `ALL PASS`** (this is what CI runs):
 
