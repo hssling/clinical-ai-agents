@@ -31,14 +31,28 @@ jobs:
           fi
 
           echo "Checking $APP_URL"
-          code=$(curl -s -o /tmp/body -w "%{http_code}" -L --max-time 45 "$APP_URL" || echo 000)
-          echo "HTTP $code"
 
-          if [ "$code" != "200" ]; then
-            echo "::error::App returned HTTP $code — it may be asleep, broken, or removed."
-            head -c 500 /tmp/body || true
+          # Capture status and exit code SEPARATELY. Combining them with `|| echo`
+          # concatenates the two values into nonsense like "303000".
+          code=$(curl -sS -L --max-time 60 -o /tmp/body -w '%{http_code}' "$APP_URL")
+          rc=$?
+
+          echo "curl exit=$rc  final HTTP=$code"
+
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::curl failed (exit $rc) — host unreachable or timed out."
             exit 1
           fi
+
+          # Streamlit redirects before serving, so accept any 2xx after -L.
+          case "$code" in
+            2??) : ;;
+            *)
+              echo "::error::App returned HTTP $code — it may be broken or removed."
+              head -c 500 /tmp/body || true
+              exit 1
+              ;;
+          esac
 
           # A sleeping Community Cloud app still returns 200 with a wake screen,
           # so check the body rather than trusting the status code alone.
