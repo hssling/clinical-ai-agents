@@ -260,7 +260,7 @@ Two things are deliberately not left to the model:
 
 
 # ---------------------------------------------------------------- 4. ScreenMate
-else:
+elif page == "screen":
     st.title("ScreenMate")
     st.caption("**Capability: tool use at scale.** The same judgement applied across "
                "many records, returning machine-readable output — not chat.")
