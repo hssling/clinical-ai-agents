@@ -130,3 +130,32 @@ EXCLUSION CRITERIA:
 DIFF_SYMPTOMS = "42-year-old female presents with sudden onset sharp right-sided chest pain worsening on deep inspiration (pleuritic). HR 104 bpm, BP 122/78 mmHg, SpO2 97% on room air. Taking oral contraceptive pills."
 DIFF_WORKING_DIAGNOSIS = "Musculoskeletal chest wall pain / muscle strain"
 
+# 9. RadVision (Multimodal Vision) Samples
+# Valid 1x1 transparent PNG base64 string for zero-network testing & preview
+TINY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+MULTIMODAL_SAMPLES = [
+    {
+        "label": "🫁 Chest X-Ray: Fever & Consolidation",
+        "modality": "Chest X-Ray",
+        "file_name": "cxr_right_lower_lobe_consolidation.jpg",
+        "context": "54-year-old male presenting with 4 days of high fever, productive cough with purulent sputum, and right-sided pleuritic chest pain. SpO2 92% on room air.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🩺 Dermatology: Asymmetric Skin Lesion",
+        "modality": "Dermatology",
+        "file_name": "skin_lesion_irregular_melanoma.jpg",
+        "context": "48-year-old female noticed a changing pigmented lesion on her upper back. Asymmetric borders, color variation (dark brown/black), diameter 8mm.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "⚡ ECG: Acute Chest Pain (ST Elevation)",
+        "modality": "ECG",
+        "file_name": "ecg_acute_st_elevation_stemi.jpg",
+        "context": "62-year-old diabetic male with sudden crushing retrosternal chest pain radiating to left jaw and arm for 1 hour. Diaphoretic and pale.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+

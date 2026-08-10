@@ -253,6 +253,91 @@ def self_test() -> int:
         return 1
 
 
+def complete_multimodal(
+    prompt: str,
+    *,
+    image_b64: str = "",
+    mime_type: str = "image/png",
+    system: str = "",
+    mock: str = "",
+    temperature: float = 0.2,
+) -> str:
+    """Return model output for `prompt` and optional base64 `image_b64`.
+
+    `mock` is used in offline mode or as a fallback if the live call fails.
+    """
+    provider = active_provider()
+
+    if provider == "mock" or not image_b64:
+        if provider == "mock":
+            if not mock:
+                raise ProviderError(
+                    "MOCK_MODE is on but this call has no mock response. "
+                    "Every agent must ship a mock so the demo survives without wifi."
+                )
+            return textwrap.dedent(mock).strip()
+        return complete(prompt, system=system, mock=mock, temperature=temperature)
+
+    try:
+        if provider == "openai":
+            return _chat_completions_multimodal(
+                "OpenAI",
+                "https://api.openai.com/v1/chat/completions",
+                [OPENAI_MODEL] if OPENAI_MODEL else OPENAI_FALLBACKS,
+                {"Authorization": f"Bearer {_env('OPENAI_API_KEY')}"},
+                prompt, image_b64, mime_type, system, temperature,
+            )
+        if provider == "openrouter":
+            return _chat_completions_multimodal(
+                "OpenRouter",
+                "https://openrouter.ai/api/v1/chat/completions",
+                [OPENROUTER_MODEL] if OPENROUTER_MODEL else OPENROUTER_FALLBACKS,
+                {
+                    "Authorization": f"Bearer {_env('OPENROUTER_API_KEY')}",
+                    "HTTP-Referer": "https://clinical-ai-agents.streamlit.app",
+                    "X-Title": "Clinical AI Agents (CME demo)",
+                },
+                prompt, image_b64, mime_type, system, temperature,
+            )
+        return _gemini_multimodal(prompt, image_b64=image_b64, mime_type=mime_type, system=system, temperature=temperature)
+    except Exception as exc:  # noqa: BLE001 - on stage, degrading beats crashing
+        if mock:
+            return (
+                textwrap.dedent(mock).strip()
+                + f"\n\n---\n_(Live multimodal call failed, showed offline response instead: "
+                  f"{type(exc).__name__})_"
+            )
+        raise ProviderError(f"Live multimodal call failed and no mock available: {exc}") from exc
+
+
+def _chat_completions_multimodal(
+    label: str, url: str, models: list[str], headers: dict,
+    prompt: str, image_b64: str, mime_type: str, system: str, temperature: float
+) -> str:
+    global last_model_used
+
+    user_content: list[dict] = [{"type": "text", "text": prompt}]
+    if image_b64:
+        user_content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_b64}"}})
+
+    messages = ([{"role": "system", "content": system}] if system else []) + \
+               [{"role": "user", "content": user_content}]
+    failures = []
+
+    for model in models:
+        try:
+            data = _post(url, {"model": model, "messages": messages, "temperature": temperature}, headers)
+            answer = (data["choices"][0]["message"]["content"] or "").strip()
+            if answer:
+                last_model_used = model
+                return answer
+            failures.append(f"{model}: empty response")
+        except ProviderError as exc:
+            failures.append(f"{model}: {exc}"[:160])
+
+    raise ProviderError(f"All {label} multimodal models failed — " + " | ".join(failures))
+
+
 def _gemini(prompt: str, *, system: str, temperature: float) -> str:
     """Google AI Studio. Also stdlib, so google-genai is not required to run."""
     payload: dict = {
@@ -271,5 +356,33 @@ def _gemini(prompt: str, *, system: str, temperature: float) -> str:
     return (data["candidates"][0]["content"]["parts"][0]["text"] or "").strip()
 
 
+def _gemini_multimodal(
+    prompt: str, *, image_b64: str, mime_type: str, system: str, temperature: float
+) -> str:
+    parts: list[dict] = [{"text": prompt}]
+    if image_b64:
+        parts.insert(0, {
+            "inlineData": {
+                "mimeType": mime_type,
+                "data": image_b64,
+            }
+        })
+    payload: dict = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"temperature": temperature},
+    }
+    if system:
+        payload["systemInstruction"] = {"parts": [{"text": system}]}
+
+    data = _post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={_env('GOOGLE_API_KEY')}",
+        payload,
+        {},
+    )
+    return (data["candidates"][0]["content"]["parts"][0]["text"] or "").strip()
+
+
 if __name__ == "__main__":
     raise SystemExit(self_test())
+

@@ -8,10 +8,11 @@ import os
 
 os.environ["MOCK_MODE"] = "1"
 
-from agents import diffcheck, discharge, guidebot, labalert, pharmguard, screenmate, triage, trialmatch  # noqa: E402
+from agents import diffcheck, discharge, guidebot, labalert, multimodal, pharmguard, screenmate, triage, trialmatch  # noqa: E402
 import samples  # noqa: E402
 
 failures: list[str] = []
+
 
 
 def check(name: str, condition: bool, detail: str = "") -> None:
@@ -134,6 +135,39 @@ check("generates structured differential diagnosis matrix", len(d_res.differenti
       f"{len(d_res.differentials)} differentials")
 
 
+print("\n=== 9. RadVision (multimodal clinical vision) ===")
+import base64
+img_bytes = base64.b64decode(samples.TINY_PNG_B64)
+
+# Normal image analysis test
+m_res = multimodal.analyze_clinical_image(
+    image_bytes=img_bytes,
+    file_name="cxr_pneumonia.png",
+    clinical_context="Right lower lobe consolidation on CXR",
+    modality="Chest X-Ray",
+)
+check("image quality validation passes", m_res.quality_check.is_valid, f"issues: {m_res.quality_check.issues}")
+check("generates clinical vision report", len(m_res.report) > 50, f"report length: {len(m_res.report)}")
+
+# Red-flag trigger check
+stemi_res = multimodal.analyze_clinical_image(
+    image_bytes=img_bytes,
+    file_name="ecg_acute_stemi.png",
+    clinical_context="Patient with severe chest pain and acute ST elevation on ECG",
+    modality="ECG",
+)
+check("detects critical red-flag alert (STEMI)", stemi_res.has_critical_red_flag, f"red flags: {stemi_res.red_flags}")
+
+# Corrupted image payload rejection check
+bad_res = multimodal.analyze_clinical_image(
+    image_bytes=b"short",
+    file_name="bad.png",
+    clinical_context="test",
+)
+check("rejects corrupted/short image payloads", not bad_res.quality_check.is_valid, "correctly flagged invalid")
+
+
 print(f"\n{'=' * 46}")
 print("ALL PASS" if not failures else f"{len(failures)} FAILURE(S): {failures}")
 raise SystemExit(1 if failures else 0)
+

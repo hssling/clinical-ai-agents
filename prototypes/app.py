@@ -41,7 +41,7 @@ def _bridge_secrets() -> None:
 _bridge_secrets()
 
 import samples  # noqa: E402 - must follow the secrets bridge
-from agents import diffcheck, discharge, guidebot, labalert, pharmguard, provider, screenmate, triage, trialmatch  # noqa: E402
+from agents import diffcheck, discharge, guidebot, labalert, multimodal, pharmguard, provider, screenmate, triage, trialmatch  # noqa: E402
 from agents.retrieval import load_sections  # noqa: E402
 
 st.set_page_config(page_title="Clinical AI Agents — Live Demo", page_icon="🩺", layout="wide")
@@ -79,7 +79,9 @@ PAGES = {
     "6 · LabAlert — panic values": "lab",
     "7 · TrialMatch — criteria matrix": "trial",
     "8 · DiffCheck — debiasing": "diff",
+    "9 · RadVision — multimodal vision": "vision",
 }
+
 
 with st.sidebar:
     st.title("🩺 Clinical AI Agents")
@@ -447,7 +449,7 @@ making protocol audit and human review fast and accountable.
 
 
 # ---------------------------------------------------------------- 8. DiffCheck
-else:
+elif page == "diff":
     st.title("DiffCheck")
     st.caption("**Capability: red-teaming & cognitive debiasing.** Generates differential diagnoses while "
                "actively challenging anchoring bias with mandatory 'Must-Not-Miss' safety checklists.")
@@ -487,4 +489,76 @@ Cognitive bias (like premature closure and anchoring) is a leading cause of diag
 DiffCheck acts as a **red-teaming agent**: it injects a deterministic organ-system emergency checklist
 and explicitly critiques the initial impression before accepting a benign diagnosis.
 """)
+
+
+# ---------------------------------------------------------------- 9. RadVision
+else:
+    st.title("RadVision")
+    st.caption("**Capability: multimodal clinical vision.** Combines medical imaging (Chest X-Ray, Derm, ECG) "
+               "with clinical history, applying deterministic image quality validation and critical red-flag safety triggers.")
+
+    st.write("**Try a sample clinical vision case:**")
+    cols = st.columns(len(samples.MULTIMODAL_SAMPLES))
+    for col, sample_case in zip(cols, samples.MULTIMODAL_SAMPLES):
+        if col.button(sample_case["label"], key=f"ms_{sample_case['modality']}", use_container_width=True):
+            st.session_state.rad_context = sample_case["context"]
+            st.session_state.rad_modality = sample_case["modality"]
+            st.session_state.rad_filename = sample_case["file_name"]
+            st.session_state.rad_b64 = sample_case["image_b64"]
+
+    context_in = st.text_area("Patient Clinical History & Context",
+                              value=st.session_state.get("rad_context", samples.MULTIMODAL_SAMPLES[0]["context"]),
+                              height=120)
+
+    col_m1, col_m2 = st.columns(2)
+    modality_in = col_m1.selectbox("Image Modality", ["Chest X-Ray", "Dermatology", "ECG", "Clinical Photo"],
+                                   index=0 if "rad_modality" not in st.session_state else
+                                   ["Chest X-Ray", "Dermatology", "ECG", "Clinical Photo"].index(st.session_state.rad_modality) if st.session_state.rad_modality in ["Chest X-Ray", "Dermatology", "ECG", "Clinical Photo"] else 0)
+
+    uploaded_file = col_m2.file_uploader("Upload Medical Image (PNG, JPG, WEBP)", type=["png", "jpg", "jpeg", "webp"])
+
+    image_bytes = None
+    file_name = st.session_state.get("rad_filename", "cxr_sample.jpg")
+
+    if uploaded_file is not None:
+        image_bytes = uploaded_file.read()
+        file_name = uploaded_file.name
+        st.image(image_bytes, caption=f"Uploaded Image: {file_name}", use_column_width=True)
+    elif "rad_b64" in st.session_state:
+        import base64
+        image_bytes = base64.b64decode(st.session_state.rad_b64)
+        st.info(f"Loaded sample image metadata: {file_name}")
+    else:
+        import base64
+        image_bytes = base64.b64decode(samples.TINY_PNG_B64)
+
+    if st.button("Run Multimodal Vision Analysis", type="primary"):
+        if image_bytes:
+            result = multimodal.analyze_clinical_image(
+                image_bytes=image_bytes,
+                file_name=file_name,
+                clinical_context=context_in,
+                modality=modality_in,
+            )
+
+            if result.has_critical_red_flag:
+                banner("danger", "🚨 CRITICAL RED-FLAG SAFETY ALERT TRIGGERED")
+                for flag in result.red_flags:
+                    st.write(f"- {flag}")
+
+            if result.quality_check.is_valid:
+                banner("ok", f"✅ Image Validation Passed · {result.quality_check.mime_type} ({result.quality_check.file_size_kb} KB)")
+            else:
+                banner("warn", "⚠️ Image Quality / Format Warning")
+
+            st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+1. The image payload undergoes **deterministic size & format validation** before reaching the vision model.
+2. Clinical context is scanned locally for **life-threatening emergencies** (Pneumothorax, Acute STEMI, Melanoma risk).
+3. Image bytes and clinical history are packaged into a **multimodal vision request** sent to the LLM (Gemini 2.0 Flash / GPT-4o / OpenRouter).
+4. If running offline (`MOCK_MODE=1`), pre-audited diagnostic vision reports are served instantly without network latency.
+""")
+
 
