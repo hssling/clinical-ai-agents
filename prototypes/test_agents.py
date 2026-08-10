@@ -8,7 +8,7 @@ import os
 
 os.environ["MOCK_MODE"] = "1"
 
-from agents import discharge, guidebot, screenmate, triage  # noqa: E402
+from agents import diffcheck, discharge, guidebot, labalert, pharmguard, screenmate, triage, trialmatch  # noqa: E402
 import samples  # noqa: E402
 
 failures: list[str] = []
@@ -98,7 +98,42 @@ check("all verdicts are valid values",
 check("abstracts the model skipped are surfaced as UNCLEAR",
       any(v.id == "A6" for v in screened.verdicts), "A6 was not in the mock output")
 
-bad = screenmate.screen(abstracts, "criteria")
+
+print("\n=== 5. PharmGuard (safety overrides) ===")
+p_res = pharmguard.analyze_prescriptions(
+    samples.PHARM_MEDICATIONS, samples.PHARM_ALLERGIES, samples.PHARM_EGFR, samples.PHARM_DIAGNOSIS
+)
+check("detects high-risk drug interaction & contraindication", p_res.has_contraindication,
+      f"alerts: {p_res.alerts}")
+check("alerts include Warfarin + NSAID warning", any("Warfarin" in a for a in p_res.alerts))
+check("alerts include Metformin renal warning", any("Metformin" in a for a in p_res.alerts))
+check("alerts include Penicillin allergy warning", any("Penicillin" in a for a in p_res.alerts))
+
+
+print("\n=== 6. LabAlert (panic values) ===")
+l_res = labalert.analyze_labs(samples.LAB_PANEL_CRITICAL)
+check("detects critical panic value", l_res.has_panic, f"panic alerts: {l_res.panic_alerts}")
+check("identifies potassium panic elevation", any("Potassium" in a for a in l_res.panic_alerts))
+check("parses numeric lab values", len(l_res.lab_values) >= 5, f"{len(l_res.lab_values)} values parsed")
+
+
+print("\n=== 7. TrialMatch (criteria matrix) ===")
+t_res = trialmatch.screen_trial(samples.TRIAL_PATIENT_PROFILE, samples.TRIAL_CRITERIA)
+check("evaluates trial eligibility verdict", t_res.verdict == "INELIGIBLE", f"verdict: {t_res.verdict}")
+check("no json parse error", not t_res.parse_error, t_res.parse_error)
+check("generates criteria match matrix", len(t_res.criteria_matches) >= 3,
+      f"{len(t_res.criteria_matches)} criteria matched")
+
+
+print("\n=== 8. DiffCheck (debiasing) ===")
+d_res = diffcheck.evaluate_differential(samples.DIFF_SYMPTOMS, samples.DIFF_WORKING_DIAGNOSIS)
+check("retrieves must-not-miss emergency checklist", len(d_res.must_not_miss_checklist) >= 3,
+      f"checklist: {d_res.must_not_miss_checklist}")
+check("includes Pulmonary Embolism emergency", any("Pulmonary Embolism" in item for item in d_res.must_not_miss_checklist))
+check("generates structured differential diagnosis matrix", len(d_res.differentials) >= 2,
+      f"{len(d_res.differentials)} differentials")
+
+
 print(f"\n{'=' * 46}")
 print("ALL PASS" if not failures else f"{len(failures)} FAILURE(S): {failures}")
 raise SystemExit(1 if failures else 0)

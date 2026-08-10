@@ -4,9 +4,9 @@
 [![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://clinical-ai-agents.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0E8F84.svg)](LICENSE)
 
-**Four working clinical AI agents, and everything needed to teach how they are built.**
+**Eight working clinical AI agents, and everything needed to teach how they are built.**
 
-**CME: Artificial Intelligence in Healthcare — From Theory to Clinical Mastery**
+CME: Artificial Intelligence in Healthcare — From Theory to Clinical Mastery
 Shridevi Institute of Medical Sciences & Research Hospital, Tumkur · Dept. of Anatomy
 **12 August 2026 · 12:30–13:15 · Hospital Auditorium**
 Dr. Siddalingaiah H S, Professor, Dept. of Community Medicine
@@ -18,16 +18,20 @@ Dr. Siddalingaiah H S, Professor, Dept. of Community Medicine
 
 ---
 
-## The four agents
+## The eight clinical agents
 
 | # | Agent | Clinical job | Capability it demonstrates |
 |---|---|---|---|
-| 1 | **GuideBot** | Answers from national guidelines with citations — and **refuses** when they don't cover it | Grounding |
-| 2 | **DischargeDraft** | Ward notes → structured discharge summary, with a local identifier scan | Structured generation |
+| 1 | **GuideBot** | Answers from national guidelines with citations — and **refuses** when unsupported | Grounding |
+| 2 | **DischargeDraft** | Ward notes → structured discharge summary, with a local privacy scan | Structured generation |
 | 3 | **TriageAssist** | Complaint → follow-ups → red flags → escalation | The agentic loop |
 | 4 | **ScreenMate** | Screens abstracts against inclusion/exclusion criteria | Batch scale |
+| 5 | **PharmGuard** | Prescriptions → interactions, allergy alerts & renal dose checks | Deterministic safety overrides |
+| 6 | **LabAlert** | Lab panels → panic value detection & critical alerts | Numerical boundary check |
+| 7 | **TrialMatch** | Patient summary vs protocol criteria → matrix breakdown | Multi-criteria reasoning matrix |
+| 8 | **DiffCheck** | Symptoms → differential matrix & red-teaming safety checklist | Cognitive debiasing |
 
-The progression is the argument: *"AI in medicine" is not one capability, it is at least four, and they carry different risks.*
+The progression is the argument: *"AI in medicine" is not one capability, it is multi-faceted, and different capabilities carry distinct clinical risks.*
 
 ---
 

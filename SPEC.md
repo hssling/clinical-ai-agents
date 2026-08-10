@@ -40,9 +40,9 @@
 
 **The agent is made to fail on purpose.** During LIVE TEST, an out-of-scope question is asked and the agent *refuses* rather than fabricates. This is the highest-value minute of the session: it separates the talk from AI hype, discharges the hallucination objection before Q&A, and calls back to the 09:30 governance session.
 
-## 3. The four prototypes
+## 3. The eight clinical prototypes
 
-One capability each — the progression *is* the argument of the talk.
+One core capability each — the progression *is* the argument of the talk.
 
 | # | Name | Clinical job | Capability taught |
 |---|---|---|---|
@@ -50,6 +50,10 @@ One capability each — the progression *is* the argument of the talk.
 | 2 | **DischargeDraft** | Case notes → structured discharge summary | Structured generation — schema-constrained output |
 | 3 | **TriageAssist** | Complaint → follow-ups → red-flag detection → escalation | The agentic loop — multi-turn, decides when to stop |
 | 4 | **ScreenMate** | Screens abstracts against inclusion/exclusion criteria | Tool use at scale — batch, machine-readable output |
+| 5 | **PharmGuard** | Prescriptions → interactions, allergy alerts & renal dose checks | Safety overrides — local deterministic validation |
+| 6 | **LabAlert** | Lab panels → panic value detection & critical alerts | Boundary checks — numerical range validation |
+| 7 | **TrialMatch** | Patient summary vs protocol criteria → matrix breakdown | Reasoning matrix — multi-attribute evaluation |
+| 8 | **DiffCheck** | Symptoms → differential matrix & red-teaming safety checklist | Cognitive debiasing — red-teaming anchoring bias |
 
 **TriageAssist ships with a permanent, non-dismissible on-screen banner: "EDUCATIONAL DEMONSTRATION — NOT FOR CLINICAL USE."** Non-negotiable in an accredited session.
 
@@ -57,11 +61,10 @@ One capability each — the progression *is* the argument of the talk.
 
 ```
 Streamlit app ──► agents/ ──► provider layer ──► Gemini (free tier)
-  4 pages         4 modules    swappable        └─ MOCK_MODE ──► canned replies
-  ONE URL
+  8 pages         8 modules    swappable        └─ MOCK_MODE ──► canned replies
 ```
 
-- **One app, four pages, one URL.** Four browser tabs is an unaffordable risk on stage.
+- **One app, eight pages, one URL.** Eight browser tabs is an unaffordable risk on stage.
 - **Gemini free tier default.** Free key, no credit card, available in India. Provider layer is swappable to OpenAI/Anthropic in one line.
 - **`MOCK_MODE=1` is the fallback kit, not a toy.** Realistic pre-written responses, zero internet, zero API key. If wifi fails at 12:42, one environment variable keeps the entire demo live. The audience cannot tell.
 - **Hugging Face Spaces for deploy.** Free, public URL, `git push` rebuilds in 60–90s. The rebuild window is covered by the Requirements slide — dead air becomes stagecraft.

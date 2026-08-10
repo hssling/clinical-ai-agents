@@ -78,3 +78,55 @@ TRIAGE_COMPLAINTS = [
     "6 month old infant, not feeding well since yesterday, fever",
     "60 year old, sudden weakness of one side of body, slurred speech",
 ]
+
+# 5. PharmGuard Samples
+PHARM_MEDICATIONS = [
+    "Warfarin 5mg daily",
+    "Ibuprofen 400mg TID",
+    "Metformin 1000mg BID",
+    "Amoxicillin 500mg TID",
+    "Amlodipine 5mg daily",
+]
+PHARM_ALLERGIES = ["Penicillin (Anaphylaxis)"]
+PHARM_EGFR = 28.0
+PHARM_DIAGNOSIS = "Type 2 Diabetes Mellitus with Stage 4 Chronic Kidney Disease and Atrial Fibrillation"
+
+# 6. LabAlert Samples
+LAB_PANEL_CRITICAL = """\
+Hemoglobin: 11.2 g/dL
+WBC: 12,400 /µL
+Platelets: 185,000 /µL
+Potassium: 6.4 mEq/L
+Sodium: 136 mEq/L
+Serum Creatinine: 2.8 mg/dL
+Troponin I: 0.12 ng/mL
+Blood Glucose: 210 mg/dL\
+"""
+
+# 7. TrialMatch Samples
+TRIAL_PATIENT_PROFILE = """\
+Patient: 58-year-old male
+Diagnosis: Type 2 Diabetes Mellitus (12 years duration)
+Recent HbA1c: 8.6%
+Renal Function: eGFR 24 mL/min/1.73m2, Serum Creatinine 2.4 mg/dL
+Prior Medications: Metformin (discontinued), Glimepiride 2mg, Insulatard 20U at bedtime
+Cardiac History: No history of myocardial infarction, stroke, or heart failure.
+Ophthalmic Exam: Mild non-proliferative diabetic retinopathy.\
+"""
+
+TRIAL_CRITERIA = """\
+INCLUSION CRITERIA:
+1. Adults aged 18 to 75 years at time of screening.
+2. Diagnosed with Type 2 Diabetes Mellitus with baseline HbA1c between 7.5% and 10.5%.
+3. Stable regimen of glucose-lowering therapy for at least 8 weeks prior to screening.
+
+EXCLUSION CRITERIA:
+1. eGFR < 30 mL/min/1.73m2 or active end-stage renal disease.
+2. History of acute coronary syndrome, stroke, or TIA within the previous 6 months.
+3. Severe proliferative diabetic retinopathy or macular edema requiring urgent laser therapy.\
+"""
+
+# 8. DiffCheck Samples
+DIFF_SYMPTOMS = "42-year-old female presents with sudden onset sharp right-sided chest pain worsening on deep inspiration (pleuritic). HR 104 bpm, BP 122/78 mmHg, SpO2 97% on room air. Taking oral contraceptive pills."
+DIFF_WORKING_DIAGNOSIS = "Musculoskeletal chest wall pain / muscle strain"
+

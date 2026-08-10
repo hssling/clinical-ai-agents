@@ -41,7 +41,7 @@ def _bridge_secrets() -> None:
 _bridge_secrets()
 
 import samples  # noqa: E402 - must follow the secrets bridge
-from agents import discharge, guidebot, provider, screenmate, triage  # noqa: E402
+from agents import diffcheck, discharge, guidebot, labalert, pharmguard, provider, screenmate, triage, trialmatch  # noqa: E402
 from agents.retrieval import load_sections  # noqa: E402
 
 st.set_page_config(page_title="Clinical AI Agents — Live Demo", page_icon="🩺", layout="wide")
@@ -75,6 +75,10 @@ PAGES = {
     "2 · DischargeDraft — structure": "discharge",
     "3 · TriageAssist — the loop": "triage",
     "4 · ScreenMate — scale": "screen",
+    "5 · PharmGuard — safety overrides": "pharm",
+    "6 · LabAlert — panic values": "lab",
+    "7 · TrialMatch — criteria matrix": "trial",
+    "8 · DiffCheck — debiasing": "diff",
 }
 
 with st.sidebar:
@@ -303,3 +307,184 @@ Three safeguards worth copying:
 - Any abstract the model skipped is **surfaced**, not quietly dropped.
 - UNCLEAR exists at all, so the agent can say *"I cannot tell from this."*
 """)
+
+
+# ---------------------------------------------------------------- 5. PharmGuard
+elif page == "pharm":
+    st.title("PharmGuard")
+    st.caption("**Capability: deterministic safety overrides.** Hardcoded medical safety tables "
+               "run locally *before* calling the LLM. High-risk contraindications override model output.")
+
+    if st.button("📋 Load high-risk sample prescription", use_container_width=True):
+        st.session_state.p_meds = "\n".join(samples.PHARM_MEDICATIONS)
+        st.session_state.p_allergies = ", ".join(samples.PHARM_ALLERGIES)
+        st.session_state.p_egfr = str(samples.PHARM_EGFR)
+        st.session_state.p_dx = samples.PHARM_DIAGNOSIS
+
+    col_a, col_b = st.columns(2)
+    p_meds_raw = col_a.text_area("Prescribed Medications (one per line)",
+                                 value=st.session_state.get("p_meds", "\n".join(samples.PHARM_MEDICATIONS)),
+                                 height=180)
+    p_dx = col_b.text_area("Clinical Indication / Diagnosis",
+                           value=st.session_state.get("p_dx", samples.PHARM_DIAGNOSIS),
+                           height=180)
+
+    c1, c2 = st.columns(2)
+    p_allergies_raw = c1.text_input("Documented Allergies (comma-separated)",
+                                    value=st.session_state.get("p_allergies", ", ".join(samples.PHARM_ALLERGIES)))
+    p_egfr_str = c2.text_input("Renal Function eGFR (mL/min/1.73m²)",
+                               value=st.session_state.get("p_egfr", str(samples.PHARM_EGFR)))
+
+    if st.button("Run PharmGuard Safety Scan", type="primary"):
+        meds = [m.strip() for m in p_meds_raw.splitlines() if m.strip()]
+        allergies = [a.strip() for a in p_allergies_raw.split(",") if a.strip()]
+        try:
+            egfr_val = float(p_egfr_str) if p_egfr_str.strip() else None
+        except ValueError:
+            egfr_val = None
+
+        result = pharmguard.analyze_prescriptions(meds, allergies, egfr_val, p_dx)
+
+        if result.has_contraindication:
+            banner("danger", "🚨 HIGH-RISK CONTRAINDICATION DETECTED — LOCAL GUARDRAIL OVERRIDE")
+        elif result.alerts:
+            banner("warn", "⚠️ MEDICATION SAFETY WARNINGS IDENTIFIED")
+        else:
+            banner("ok", "✅ No high-risk deterministic contraindications found")
+
+        if result.alerts:
+            st.markdown("**Deterministic Local Safety Flags:**")
+            for alert in result.alerts:
+                st.markdown(f"- **{alert}**")
+
+        st.divider()
+        st.markdown(result.analysis)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+The interaction table and allergy check run **locally in Python before the prompt is constructed**.
+If a life-threatening contraindication (e.g. Warfarin + NSAID, or Metformin in eGFR < 30) is present,
+it generates a high-severity alert banner regardless of what the LLM generates.
+Safety guardrails must be deterministic, not prompt-dependent.
+""")
+
+
+# ---------------------------------------------------------------- 6. LabAlert
+elif page == "lab":
+    st.title("LabAlert")
+    st.caption("**Capability: numerical boundary check.** Parses numeric lab metrics locally and "
+               "triggers immediate emergency banners for critical 'Panic Values'.")
+
+    if st.button("📋 Load critical lab panel sample", use_container_width=True):
+        st.session_state.lab_text = samples.LAB_PANEL_CRITICAL
+
+    lab_input = st.text_area("Laboratory Panel Report",
+                             value=st.session_state.get("lab_text", samples.LAB_PANEL_CRITICAL),
+                             height=220)
+
+    if st.button("Analyze Lab Panel", type="primary"):
+        result = labalert.analyze_labs(lab_input)
+
+        if result.has_panic:
+            banner("danger", "🚨 CRITICAL LAB PANIC VALUES IDENTIFIED — IMMEDIATE ACTION REQUIRED")
+            for alert in result.panic_alerts:
+                st.markdown(f"- **{alert}**")
+        else:
+            banner("ok", "✅ No critical panic values detected")
+
+        if result.lab_values:
+            st.write("**Parsed Laboratory Metrics:**")
+            st.table([
+                {"Test": lv.test_name, "Value": f"{lv.val} {lv.unit}", "Status": lv.status}
+                for lv in result.lab_values
+            ])
+
+        st.markdown(result.summary)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Numeric regex parsing checks panic limits (e.g. Potassium > 6.0, Troponin > 0.04) **locally in code**.
+This guarantees panic value recognition even if the LLM fails to highlight the numeric anomaly.
+""")
+
+
+# ---------------------------------------------------------------- 7. TrialMatch
+elif page == "trial":
+    st.title("TrialMatch")
+    st.caption("**Capability: multi-criteria matrix.** Compares patient profiles against protocol "
+               "inclusion/exclusion criteria and outputs structured criteria matrices.")
+
+    col_a, col_b = st.columns(2)
+    patient_text = col_a.text_area("Patient Profile", value=samples.TRIAL_PATIENT_PROFILE, height=260)
+    criteria_text = col_b.text_area("Protocol Criteria", value=samples.TRIAL_CRITERIA, height=260)
+
+    if st.button("Evaluate Trial Eligibility", type="primary"):
+        result = trialmatch.screen_trial(patient_text, criteria_text)
+
+        if result.verdict == "ELIGIBLE":
+            banner("ok", "✅ PATIENT IS ELIGIBLE FOR CLINICAL TRIAL RECRUITMENT")
+        elif result.verdict == "INELIGIBLE":
+            banner("danger", "❌ PATIENT IS INELIGIBLE — CRITERIA UNMET OR EXCLUSION MET")
+        else:
+            banner("warn", "❓ ELIGIBILITY UNCERTAIN — ADDITIONAL CLINICAL DATA REQUIRED")
+
+        st.markdown(f"**Executive Summary:** {result.summary}")
+
+        if result.criteria_matches:
+            st.write("**Criteria Breakdown Matrix:**")
+            icons = {"MET": "✅", "UNMET": "❌", "UNKNOWN": "❓"}
+            st.table([
+                {"Criterion": c.criterion, "": icons.get(c.status, "❓"), "Status": c.status, "Rationale": c.explanation}
+                for c in result.criteria_matches
+            ])
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+The output is forced into a **structured multi-attribute matrix (JSON)**.
+Instead of an ambiguous paragraph, the agent evaluates each criterion individually,
+making protocol audit and human review fast and accountable.
+""")
+
+
+# ---------------------------------------------------------------- 8. DiffCheck
+else:
+    st.title("DiffCheck")
+    st.caption("**Capability: red-teaming & cognitive debiasing.** Generates differential diagnoses while "
+               "actively challenging anchoring bias with mandatory 'Must-Not-Miss' safety checklists.")
+
+    if st.button("📋 Load pleuritic chest pain case (anchoring risk)", use_container_width=True):
+        st.session_state.diff_symptoms = samples.DIFF_SYMPTOMS
+        st.session_state.diff_working = samples.DIFF_WORKING_DIAGNOSIS
+
+    symptoms_in = st.text_area("Presenting Symptoms & History",
+                               value=st.session_state.get("diff_symptoms", samples.DIFF_SYMPTOMS),
+                               height=160)
+    working_in = st.text_input("Initial Working Diagnosis (Subject to Anchoring Check)",
+                               value=st.session_state.get("diff_working", samples.DIFF_WORKING_DIAGNOSIS))
+
+    if st.button("Run Diagnostic Safety Check", type="primary"):
+        result = diffcheck.evaluate_differential(symptoms_in, working_in)
+
+        if result.must_not_miss_checklist:
+            banner("warn", "⚠️ MANDATORY SAFETY CHECKLIST: HIGH-RISK EMERGENCIES TO RULE OUT")
+            st.markdown("**Must-Not-Miss Emergencies for this Presentation:**")
+            for item in result.must_not_miss_checklist:
+                st.markdown(f"- 🔴 **{item}**")
+
+        st.divider()
+        st.markdown(result.debiasing_critique)
+
+        if result.differentials:
+            st.write("**Differential Diagnosis Matrix:**")
+            st.table([
+                {"Diagnosis": d.diagnosis, "Category": d.category, "Supporting": d.supporting_evidence, "Key Rule-Out Test": d.key_test_to_rule_out}
+                for d in result.differentials
+            ])
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Cognitive bias (like premature closure and anchoring) is a leading cause of diagnostic error.
+DiffCheck acts as a **red-teaming agent**: it injects a deterministic organ-system emergency checklist
+and explicitly critiques the initial impression before accepting a benign diagnosis.
+""")
+
