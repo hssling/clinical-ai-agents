@@ -497,17 +497,21 @@ else:
     st.caption("**Capability: multimodal clinical vision.** Combines medical imaging (Chest X-Ray, Derm, ECG) "
                "with clinical history, applying deterministic image quality validation and critical red-flag safety triggers.")
 
+    multimodal_samples = getattr(samples, "MULTIMODAL_SAMPLES", getattr(multimodal, "MULTIMODAL_SAMPLES", []))
+    tiny_png_b64 = getattr(samples, "TINY_PNG_B64", getattr(multimodal, "TINY_PNG_B64", ""))
+
     st.write("**Try a sample clinical vision case:**")
-    cols = st.columns(len(samples.MULTIMODAL_SAMPLES))
-    for col, sample_case in zip(cols, samples.MULTIMODAL_SAMPLES):
+    cols = st.columns(len(multimodal_samples))
+    for col, sample_case in zip(cols, multimodal_samples):
         if col.button(sample_case["label"], key=f"ms_{sample_case['modality']}", use_container_width=True):
             st.session_state.rad_context = sample_case["context"]
             st.session_state.rad_modality = sample_case["modality"]
             st.session_state.rad_filename = sample_case["file_name"]
             st.session_state.rad_b64 = sample_case["image_b64"]
 
+    default_context = multimodal_samples[0]["context"] if multimodal_samples else "54-year-old male presenting with high fever and cough."
     context_in = st.text_area("Patient Clinical History & Context",
-                              value=st.session_state.get("rad_context", samples.MULTIMODAL_SAMPLES[0]["context"]),
+                              value=st.session_state.get("rad_context", default_context),
                               height=120)
 
     col_m1, col_m2 = st.columns(2)
@@ -530,7 +534,8 @@ else:
         st.info(f"Loaded sample image metadata: {file_name}")
     else:
         import base64
-        image_bytes = base64.b64decode(samples.TINY_PNG_B64)
+        image_bytes = base64.b64decode(tiny_png_b64) if tiny_png_b64 else b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
 
     if st.button("Run Multimodal Vision Analysis", type="primary"):
         if image_bytes:

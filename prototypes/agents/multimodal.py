@@ -16,6 +16,33 @@ import re
 
 from agents import provider
 
+TINY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+MULTIMODAL_SAMPLES = [
+    {
+        "label": "🫁 Chest X-Ray: Fever & Consolidation",
+        "modality": "Chest X-Ray",
+        "file_name": "cxr_right_lower_lobe_consolidation.jpg",
+        "context": "54-year-old male presenting with 4 days of high fever, productive cough with purulent sputum, and right-sided pleuritic chest pain. SpO2 92% on room air.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🩺 Dermatology: Asymmetric Skin Lesion",
+        "modality": "Dermatology",
+        "file_name": "skin_lesion_irregular_melanoma.jpg",
+        "context": "48-year-old female noticed a changing pigmented lesion on her upper back. Asymmetric borders, color variation (dark brown/black), diameter 8mm.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "⚡ ECG: Acute Chest Pain (ST Elevation)",
+        "modality": "ECG",
+        "file_name": "ecg_acute_st_elevation_stemi.jpg",
+        "context": "62-year-old diabetic male with sudden crushing retrosternal chest pain radiating to left jaw and arm for 1 hour. Diaphoretic and pale.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+
 
 @dataclass
 class ImageQualityCheck:
