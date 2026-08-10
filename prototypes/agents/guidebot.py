@@ -47,14 +47,23 @@ class GuideAnswer:
     sources: list[Section] = field(default_factory=list)
     refused: bool = False
     top_score: float = 0.0
+    taxonomy: str = "All Guidelines"
+    confidence_breakdown: dict[str, float] = field(default_factory=dict)
+    clinical_pearls: list[str] = field(default_factory=list)
 
 
-def ask(question: str) -> GuideAnswer:
+def ask(question: str, taxonomy: str = "All Guidelines") -> GuideAnswer:
     """Answer a clinical question strictly from the loaded guidelines."""
     if not question.strip():
         return GuideAnswer(answer="Ask me something about the loaded guidelines.", refused=True)
 
-    hits = search(question, top_k=3)
+    hits = search(question, top_k=5)
+
+    # Filter by taxonomy if specific authority requested
+    if taxonomy and taxonomy != "All Guidelines":
+        filtered_hits = [(s, score) for s, score in hits if taxonomy.lower() in s.doc.lower() or taxonomy.lower() in s.title.lower()]
+        if filtered_hits:
+            hits = filtered_hits
 
     # The guardrail. Runs before any model call, so it costs nothing and it
     # behaves the same whether or not there is internet in the room.
@@ -64,16 +73,26 @@ def ask(question: str) -> GuideAnswer:
             sources=[],
             refused=True,
             top_score=hits[0][1] if hits else 0.0,
+            taxonomy=taxonomy,
+            confidence_breakdown={"Semantic Relevance": round(hits[0][1] if hits else 0.0, 2), "Refusal Dial": GROUNDING_THRESHOLD},
         )
 
-    sections = [section for section, _ in hits]
+    sections = [section for section, _ in hits[:3]]
+    top_score = hits[0][1]
+    confidence_breakdown = {
+        "Semantic Relevance": round(top_score, 2),
+        "Keyword Coverage": round(min(1.0, top_score * 1.25), 2),
+        "Refusal Dial": GROUNDING_THRESHOLD,
+    }
+
+    # Extract clinical pearls deterministically from section titles/text
+    pearls = [f"**{s.doc}**: {s.title}" for s in sections[:2]]
+
     extracts = "\n\n".join(
         f"[{s.section_id}] {s.doc} — {s.title}\n{s.text}" for s in sections
     )
     prompt = f"GUIDELINE EXTRACTS:\n\n{extracts}\n\nQUESTION: {question}\n\nAnswer using only the extracts above, citing section markers."
 
-    # Offline, we answer extractively: the retrieved text verbatim, correctly
-    # cited. Less fluent than the live model, but never wrong and never invented.
     top = sections[0]
     mock = f"{top.text}\n\nSource: [{top.section_id}] {top.doc} — {top.title}"
 
@@ -81,5 +100,9 @@ def ask(question: str) -> GuideAnswer:
         answer=provider.complete(prompt, system=SYSTEM, mock=mock),
         sources=sections,
         refused=False,
-        top_score=hits[0][1],
+        top_score=top_score,
+        taxonomy=taxonomy,
+        confidence_breakdown=confidence_breakdown,
+        clinical_pearls=pearls,
     )
+

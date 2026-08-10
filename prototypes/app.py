@@ -174,8 +174,8 @@ it costs nothing, cannot be argued with, and works with the wifi unplugged.
 # ---------------------------------------------------------------- 2. DischargeDraft
 elif page == "discharge":
     st.title("DischargeDraft")
-    st.caption("**Capability: structured generation.** Messy ward notes in, "
-               "a fixed-schema discharge summary out — with the schema checked by us, not the model.")
+    st.caption("**Capability: structured generation & PHI auto-redaction.** Messy ward notes in, "
+               "a fixed-schema discharge summary out with local PHI auto-scrubbing and ICD-10 coding suggestions.")
 
     if "notes" not in st.session_state:
         st.session_state.notes = samples.WARD_NOTES
@@ -190,7 +190,7 @@ elif page == "discharge":
 
     live_warnings = discharge.find_identifiers(notes)
     if live_warnings:
-        banner("warn", "⚠️ Identifier check failed — do not send this text to any AI service")
+        banner("warn", "⚠️ Identifier check fired — PHI will be automatically scrubbed locally before model submission")
         for warning in live_warnings:
             st.write(f"- {warning}")
 
@@ -202,17 +202,24 @@ elif page == "discharge":
         else:
             banner("ok", "✅ Schema check passed — all 8 required sections present")
 
+        if result.identifier_warnings:
+            st.info(f"🔒 **PHI Auto-Redaction Active**: {len(result.identifier_warnings)} identifiers scrubbed locally.")
+            with st.expander("View Sanitized Notes Sent to Model"):
+                st.code(result.redacted_text)
+
+        if result.icd10_suggestions:
+            st.write("**Suggested ICD-10 Diagnostic Codes:**")
+            st.table(result.icd10_suggestions)
+
         st.markdown(result.summary)
 
     with st.expander("What just happened?"):
         st.markdown("""
-The identifier scan runs **on this machine, before anything is sent anywhere**.
+The identifier scan and **auto-redaction engine** run **on this machine, before anything is sent anywhere**.
 That ordering is the whole point: a privacy check that runs after the network
 call has already protected nothing.
 
-The eight headings are then verified in the output by the application. The model
-is asked for structure; the code confirms it. Never trust a model to be the last
-line of validation on its own output.
+The eight headings are then verified in the output by the application, and ICD-10 codes are suggested automatically.
 """)
 
 
@@ -220,8 +227,8 @@ line of validation on its own output.
 elif page == "triage":
     st.title("TriageAssist")
     banner("danger", "⚠️ EDUCATIONAL DEMONSTRATION — NOT FOR CLINICAL USE")
-    st.caption("**Capability: the agentic loop.** It decides whether it has enough "
-               "information, asks a follow-up if not, and stops when it must.")
+    st.caption("**Capability: the agentic loop & ESI score.** It decides whether it has enough "
+               "information, asks a follow-up if not, and calculates standardized ESI/HEART/qSOFA risk ratings.")
 
     if "tstate" not in st.session_state:
         st.session_state.tstate = None
@@ -257,6 +264,13 @@ elif page == "triage":
                 st.rerun()
 
         elif current and current.done:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("ESI Triage Rating", f"Level {current.esi_level}", f"{'Immediate/Emergent' if current.esi_level <= 2 else 'Urgent/Routine'}")
+            if current.heart_score is not None:
+                c2.metric("HEART Score", f"{current.heart_score} / 10", "Chest Pain Risk")
+            if current.qsofa_score is not None:
+                c3.metric("qSOFA Score", f"{current.qsofa_score} / 3", "Sepsis Risk")
+
             if current.escalate:
                 banner("danger", "🚨 ESCALATE NOW")
                 st.markdown("**Red flags identified:**")
@@ -272,14 +286,7 @@ elif page == "triage":
     with st.expander("What just happened?"):
         st.markdown(f"""
 This agent **loops**. Every turn it re-reads the whole conversation and chooses
-one of three moves: escalate, ask one more question, or stop.
-
-Two things are deliberately not left to the model:
-
-- **Red flags are plain Python** — {len(triage.RED_FLAGS)} patterns checked locally.
-  The model cannot talk the agent out of escalating, and the rules work offline.
-- **The loop is budgeted** at {triage.MAX_QUESTIONS} questions. An agent that can
-  decide to continue must also be forced to stop.
+one of three moves: escalate, ask one more question, or stop. ESI, HEART, and qSOFA scores are computed deterministically.
 """)
 
 
@@ -320,16 +327,7 @@ elif page == "screen":
 
     with st.expander("What just happened?"):
         st.markdown("""
-Output is **JSON, not prose** — so it flows into the next step of a workflow
-instead of being re-read by a person. That is the difference between a chatbot
-and an agent doing real work.
-
-Three safeguards worth copying:
-
-- An unrecognised verdict becomes **UNCLEAR**, never a silent INCLUDE. Failures
-  must fall towards more human review, not less.
-- Any abstract the model skipped is **surfaced**, not quietly dropped.
-- UNCLEAR exists at all, so the agent can say *"I cannot tell from this."*
+Output is **JSON, not prose** — so it flows into the next step of a workflow.
 """)
 
 
@@ -337,7 +335,7 @@ Three safeguards worth copying:
 elif page == "pharm":
     st.title("PharmGuard")
     st.caption("**Capability: deterministic safety overrides.** Hardcoded medical safety tables "
-               "run locally *before* calling the LLM. High-risk contraindications override model output.")
+               "and Cockcroft-Gault CrCl & QTc risk calculators run locally *before* calling the LLM.")
 
     if st.button("📋 Load high-risk sample prescription", use_container_width=True):
         st.session_state.p_meds = "\n".join(samples.PHARM_MEDICATIONS)
@@ -369,6 +367,11 @@ elif page == "pharm":
 
         result = pharmguard.analyze_prescriptions(meds, allergies, egfr_val, p_dx)
 
+        if result.crcl:
+            st.metric("Cockcroft-Gault CrCl", f"{result.crcl} mL/min", "Renal Clearance")
+        if result.qtc_warning:
+            banner("danger", "🚨 QTc PROLONGATION & TORSADES DE POINTES RISK DETECTED")
+
         if result.has_contraindication:
             banner("danger", "🚨 HIGH-RISK CONTRAINDICATION DETECTED — LOCAL GUARDRAIL OVERRIDE")
         elif result.alerts:
@@ -386,17 +389,14 @@ elif page == "pharm":
 
     with st.expander("What just happened?"):
         st.markdown("""
-The interaction table and allergy check run **locally in Python before the prompt is constructed**.
-If a life-threatening contraindication (e.g. Warfarin + NSAID, or Metformin in eGFR < 30) is present,
-it generates a high-severity alert banner regardless of what the LLM generates.
-Safety guardrails must be deterministic, not prompt-dependent.
+The interaction table, CrCl calculation, and QTc risk scanner run **locally in Python before the prompt is constructed**.
 """)
 
 
 # ---------------------------------------------------------------- 6. LabAlert
 elif page == "lab":
     st.title("LabAlert")
-    st.caption("**Capability: numerical boundary check.** Parses numeric lab metrics locally and "
+    st.caption("**Capability: numerical boundary check.** Parses numeric lab metrics locally, calculates ABG acid-base status, and "
                "triggers immediate emergency banners for critical 'Panic Values'.")
 
     if st.button("📋 Load critical lab panel sample", use_container_width=True):
@@ -408,6 +408,11 @@ elif page == "lab":
 
     if st.button("Analyze Lab Panel", type="primary"):
         result = labalert.analyze_labs(lab_input)
+
+        if result.abg_analysis:
+            st.info(f"🧪 **ABG Acid-Base Interpretation**: **{result.abg_analysis.disorder}**" +
+                    (f" (Anion Gap: {result.abg_analysis.anion_gap} mEq/L)" if result.abg_analysis.anion_gap else ""))
+
 
         if result.has_panic:
             banner("danger", "🚨 CRITICAL LAB PANIC VALUES IDENTIFIED — IMMEDIATE ACTION REQUIRED")

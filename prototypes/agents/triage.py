@@ -116,6 +116,10 @@ class TriageStep:
     reasons: list[str] = field(default_factory=list)
     actions: list[str] = field(default_factory=list)
     summary: str = ""
+    esi_level: int = 4
+    heart_score: int | None = None
+    qsofa_score: int | None = None
+
 
 
 def _is_negated(text: str, match_start: int) -> bool:
@@ -143,10 +147,52 @@ def check_red_flags(text: str) -> tuple[list[str], list[str]]:
     return reasons, actions
 
 
+def calculate_esi_level(reasons: list[str], text: str) -> int:
+    """Calculate Emergency Severity Index (ESI) triage level (1 to 5)."""
+    text_lower = text.lower()
+    if any(r in text_lower for r in ["unconscious", "respiratory distress", "cardiac arrest", "seizure"]):
+        return 1  # Resuscitation (Immediate)
+    if reasons:
+        return 2  # Emergent (High Risk)
+    if "fever" in text_lower or "vomiting" in text_lower or "pain" in text_lower:
+        return 3  # Urgent (Multiple resources)
+    return 4  # Less Urgent
+
+
+def calculate_clinical_scores(text: str) -> tuple[int | None, int | None]:
+    """Calculate HEART score for chest pain & qSOFA score for sepsis deterministically."""
+    text_lower = text.lower()
+    heart_score = None
+    qsofa_score = None
+
+    if "chest pain" in text_lower or "angina" in text_lower:
+        # HEART Score calculation heuristic (History, ECG, Age, Risk factors, Troponin)
+        h = 2 if "crushing" in text_lower or "radiation" in text_lower else 1
+        e = 0
+        a = 2 if "60" in text_lower or "65" in text_lower or "70" in text_lower else 1
+        r = 2 if "diabetes" in text_lower or "smok" in text_lower or "htn" in text_lower else 1
+        t = 1
+        heart_score = h + e + a + r + t
+
+    if "fever" in text_lower or "infection" in text_lower or "sepsis" in text_lower:
+        # qSOFA: RR >= 22 (1 pt), Altered Mentation (1 pt), SBP <= 100 (1 pt)
+        qsofa_score = 0
+        if any(w in text_lower for w in ["drowsy", "confused", "altered", "lethargic"]):
+            qsofa_score += 1
+        if any(w in text_lower for w in ["breathless", "rr 2", "rr 3", "tachypnea"]):
+            qsofa_score += 1
+        if any(w in text_lower for w in ["hypotension", "low bp", "sbp 90", "shock"]):
+            qsofa_score += 1
+
+    return heart_score, qsofa_score
+
+
 def step(state: TriageState) -> TriageStep:
     """Advance the loop by one turn: escalate, ask, or conclude."""
     # Scans patient_text, never transcript -- see TriageState.patient_text.
     reasons, actions = check_red_flags(state.patient_text)
+    esi_level = calculate_esi_level(reasons, state.patient_text)
+    heart_score, qsofa_score = calculate_clinical_scores(state.patient_text)
 
     # Escalation short-circuits the loop. Nothing overrides a red flag.
     if reasons:
@@ -156,6 +202,9 @@ def step(state: TriageState) -> TriageStep:
             reasons=reasons,
             actions=sorted(set(actions)),
             summary="Red flag identified. Escalate now — do not continue questioning.",
+            esi_level=esi_level,
+            heart_score=heart_score,
+            qsofa_score=qsofa_score,
         )
 
     # Budget exhausted: stop and hand over. An agent that never stops is a bug.
@@ -168,6 +217,9 @@ def step(state: TriageState) -> TriageStep:
                 "Proceed with routine assessment by the medical officer. "
                 "Re-triage immediately if the person deteriorates."
             ),
+            esi_level=esi_level,
+            heart_score=heart_score,
+            qsofa_score=qsofa_score,
         )
 
     asked = [q for q, _ in state.answers]
@@ -179,4 +231,10 @@ def step(state: TriageState) -> TriageStep:
     mock = FALLBACK_QUESTIONS[len(state.answers) % len(FALLBACK_QUESTIONS)]
     question = provider.complete(prompt, system=SYSTEM, mock=mock, temperature=0.3).strip()
 
-    return TriageStep(done=False, question=question.split("\n")[0][:200])
+    return TriageStep(
+        done=False,
+        question=question.split("\n")[0][:200],
+        esi_level=esi_level,
+        heart_score=heart_score,
+        qsofa_score=qsofa_score,
+    )

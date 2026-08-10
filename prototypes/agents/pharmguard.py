@@ -60,18 +60,57 @@ class PharmGuardResult:
     has_contraindication: bool
     alerts: list[str] = field(default_factory=list)
     analysis: str = ""
+    crcl: float | None = None
+    qtc_warning: bool = False
+
+
+QTC_DRUGS = [
+    r"\bazithromycin\b", r"\bondansetron\b", r"\bhaloperidol\b",
+    r"\bamiodarone\b", r"\bciprofloxacin\b", r"\bhydroxychloroquine\b",
+    r"\bmoxifloxacin\b", r"\bmethadone\b", r"\bquetiapine\b",
+]
+
+
+def calculate_crcl(scr_mg_dl: float, age_years: int, weight_kg: float, is_female: bool = False) -> float:
+    """Calculate Cockcroft-Gault Creatinine Clearance (CrCl) in mL/min."""
+    if scr_mg_dl <= 0:
+        return 100.0
+    crcl = ((140 - age_years) * weight_kg) / (72 * scr_mg_dl)
+    if is_female:
+        crcl *= 0.85
+    return round(crcl, 1)
+
+
+def scan_qtc_risk(med_text: str) -> list[str]:
+    """Scan prescriptions for multiple QTc prolonging drug combinations."""
+    matched = [d.replace(r"\b", "").replace("\\", "") for d in QTC_DRUGS if re.search(d, med_text)]
+    if len(matched) >= 2:
+        return [f"[QTC PROLONGATION RISK] Co-administration of multiple QTc-prolonging drugs ({', '.join(matched)}). High risk of Torsades de Pointes. Baseline ECG & QTc monitoring required."]
+    return []
 
 
 def check_deterministic_safety(
     medications: list[str],
     allergies: list[str] | None = None,
     egfr: float | None = None,
-) -> tuple[bool, list[str]]:
+    scr: float | None = None,
+    age: int | None = None,
+    weight_kg: float | None = None,
+    is_female: bool = False,
+) -> tuple[bool, list[str], float | None, bool]:
     """Scan prescriptions against hardcoded safety tables locally before any LLM call."""
     alerts: list[str] = []
     has_contraindication = False
     med_text = " ".join(medications).lower()
     allergy_text = " ".join(allergies or []).lower()
+
+    # Calculate CrCl if parameters present
+    crcl = None
+    if scr and age and weight_kg:
+        crcl = calculate_crcl(scr, age, weight_kg, is_female)
+        effective_renal = crcl
+    else:
+        effective_renal = egfr
 
     # 1. Drug-Drug Interactions
     for rule in INTERACTION_RULES:
@@ -90,18 +129,27 @@ def check_deterministic_safety(
             has_contraindication = True
 
     # 3. Renal Dosing Safeguard
-    if egfr is not None:
-        if egfr < 30 and re.search(r"\bmetformin\b", med_text):
+    if effective_renal is not None:
+        if effective_renal < 30 and re.search(r"\bmetformin\b", med_text):
             alerts.append(
-                "[RENAL CONTRAINDICATION] Metformin contraindicated when eGFR < 30 mL/min/1.73m² (Risk of Lactic Acidosis)."
+                f"[RENAL CONTRAINDICATION] Metformin contraindicated when Renal Function ({effective_renal} mL/min) < 30 (Risk of Lactic Acidosis)."
             )
             has_contraindication = True
-        elif egfr < 30 and re.search(r"\b(gentamicin|amikacin|vancomycin)\b", med_text):
+        elif effective_renal < 30 and re.search(r"\benoxaparin\b", med_text):
             alerts.append(
-                "[RENAL DOSING WARNING] Severe renal impairment (eGFR < 30). Mandatory dose reduction and serum therapeutic drug monitoring required."
+                f"[RENAL DOSING WARNING] Enoxaparin dose reduction required when CrCl/eGFR < 30 mL/min (Reduce to 1mg/kg once daily)."
+            )
+        elif effective_renal < 30 and re.search(r"\b(gentamicin|amikacin|vancomycin)\b", med_text):
+            alerts.append(
+                f"[RENAL DOSING WARNING] Severe renal impairment ({effective_renal} mL/min). Mandatory dose reduction and serum therapeutic drug monitoring required."
             )
 
-    return has_contraindication, alerts
+    # 4. QTc Prolongation Risk Scanner
+    qtc_alerts = scan_qtc_risk(med_text)
+    alerts.extend(qtc_alerts)
+    has_qtc = len(qtc_alerts) > 0
+
+    return has_contraindication, alerts, crcl, has_qtc
 
 
 def analyze_prescriptions(
@@ -109,15 +157,23 @@ def analyze_prescriptions(
     allergies: list[str] | None = None,
     egfr: float | None = None,
     diagnosis: str = "",
+    scr: float | None = None,
+    age: int | None = None,
+    weight_kg: float | None = None,
+    is_female: bool = False,
 ) -> PharmGuardResult:
     """Evaluate medication safety using local rules combined with LLM analysis."""
-    has_contraindication, alerts = check_deterministic_safety(medications, allergies, egfr)
+    has_contraindication, alerts, crcl, has_qtc = check_deterministic_safety(
+        medications, allergies, egfr, scr, age, weight_kg, is_female
+    )
+
+    renal_str = f"CrCl {crcl} mL/min (Cockcroft-Gault)" if crcl else (f"{egfr} mL/min/1.73m² (eGFR)" if egfr else "Not provided")
 
     prompt = f"""Clinical Medication Safety Evaluation:
 
 Medications: {', '.join(medications)}
 Allergies: {', '.join(allergies) if allergies else 'None documented'}
-Renal Function (eGFR): {f'{egfr} mL/min/1.73m²' if egfr is not None else 'Not provided'}
+Renal Function: {renal_str}
 Indication / Diagnosis: {diagnosis or 'Not provided'}
 
 Deterministic Local Guardrail Findings:
@@ -151,4 +207,7 @@ Provide a concise clinical pharmacotherapy safety review covering:
         has_contraindication=has_contraindication,
         alerts=alerts,
         analysis=analysis,
+        crcl=crcl,
+        qtc_warning=has_qtc,
     )
+
