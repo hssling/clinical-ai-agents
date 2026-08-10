@@ -1,251 +1,253 @@
 ================================================================================
-LIVE DEMO CLINICAL AI AGENT PROMPT PACK
-3-4 Clinical Scenarios & Expected Outputs for 4 New Agents
+COMPLETE CLINICAL AI AGENT LIVE DEMO PROMPT PACK (ALL 8 AGENTS)
+3-4 Clinical Scenarios & Expected Outputs for Every Agent in the Gallery
 ================================================================================
 
-1. PHARMGUARD -- DRUG INTERACTION & DOSING GUARDRAIL AGENT
+1. GUIDEBOT -- GROUNDING, CITATION & REFUSAL AGENT
+Capability: Grounding (Answers only from loaded guidelines, cites sources, refuses out-of-scope)
+
+Scenario 1.1: In-Scope Guideline Question (TB Regimen)
+--------------------------------------------------------------------------------
+[CLINICAL QUESTION]
+What is the treatment regimen for drug-sensitive TB?
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [OK] Answered from the guidelines . relevance 100%
+Citation: Section T3 (NTEP Treatment Guidelines)
+Output: 2 months of Isoniazid, Rifampicin, Pyrazinamide, and Ethambutol (HRZE) intensive phase, followed by 4 months of Isoniazid, Rifampicin, and Ethambutol (HRE) continuation phase.
+
+
+Scenario 1.2: In-Scope Guideline Question (Vaccination Schedule)
+--------------------------------------------------------------------------------
+[CLINICAL QUESTION]
+When is the measles-rubella second dose given?
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [OK] Answered from the guidelines . relevance 100%
+Citation: Section S4 (Universal Immunization Programme)
+Output: Measles-Rubella (MR) 2nd dose is administered at 16 to 24 months of age.
+
+
+Scenario 1.3: In-Scope Guideline Question (Hypertension Referral Threshold)
+--------------------------------------------------------------------------------
+[CLINICAL QUESTION]
+What blood pressure reading needs referral to a higher facility?
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [OK] Answered from the guidelines . relevance 73%
+Citation: Section N4 (NPCDCS Referral Protocol)
+Output: Systolic BP >= 180 mmHg or Diastolic BP >= 110 mmHg, or any BP with target organ damage symptoms.
+
+
+Scenario 1.4: Out-of-Scope Question (Deliberate Guardrail Refusal)
+--------------------------------------------------------------------------------
+[CLINICAL QUESTION]
+What is the dose of adrenaline in cardiac arrest?
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [REFUSED] REFUSED -- the agent declined rather than guessed
+Relevance Score: 0.14 (Below refusal threshold 0.30)
+Guardrail Action: The guardrail fires in Python BEFORE calling the LLM. Refuses without fabricating.
+
+
+================================================================================
+2. DISCHARGEDRAFT -- STRUCTURED GENERATION & PRIVACY SCAN AGENT
+Capability: Schema-Constrained Generation & Local Identifier Scanning
+
+Scenario 2.1: Clean Inpatient Ward Notes (Schema Validation)
+--------------------------------------------------------------------------------
+[WARD NOTES INPUT]
+D1: 54/M adm c/o fever x4d, cough w sputum, breathlessness x2d. K/c/o DM2 on OHA, irregular.
+O/E febrile 101F, RR 28, SpO2 91% RA, creps R infrascapular. CXR - RLZ consolidation.
+TLC raised. RBS 268. Started IV abx + O2 nasal prongs 3L, neb, PCM SOS. Insulin sliding scale.
+D2: fever persists 100.4F. SpO2 94% on 2L. cont same. HbA1c sent - 8.2.
+D3: afebrile. O2 weaned to RA, SpO2 95%. appetite improving. cont abx.
+D4: afebrile, SpO2 97% RA, chest clearer. amb independently. TLC normalising.
+Shift to oral abx. Start metformin. Plan discharge tomorrow.
+D5: stable. for d/c. adv OPD review 1wk w rpt CXR, DM clinic 2wks. home glucose monitoring.
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [OK] Schema check passed -- all 8 required sections present
+Output: Formatted discharge summary containing 8 mandatory headings (Admission Reason, Course, Vitals, Labs, Diagnosis, Inpatient Rx, Discharge Meds, Follow-up Plan).
+
+
+Scenario 2.2: Ward Notes Containing Patient Identifiers (Privacy Scan Failure)
+--------------------------------------------------------------------------------
+[WARD NOTES INPUT]
+(Same ward notes as above, plus:)
+Contact: Ramesh Kumar, mob 9845012345, ramesh.k@example.com
+UHID: 884213   DOB: 14/07/1971
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [WARN] Identifier check failed -- do not send this text to any AI service
+Detected Privacy Violations:
+  * Possible phone number found (9845012345)
+  * Possible email address found (ramesh.k@example.com)
+  * Possible hospital/MRN number found (884213)
+  * Possible full date of birth found (14/07/1971)
+
+
+Scenario 2.3: Surgical Post-Op Ward Notes
+--------------------------------------------------------------------------------
+[WARD NOTES INPUT]
+D1: 28/F admitted for acute appendicitis. Laparoscopic appendectomy performed under GA. Intraop findings: inflamed non-perforated appendix.
+D2: Post-op D1: sips of water tolerated. Bowel sounds present. Flatus passed. Pain well controlled on oral analgesics. Surgical site clean, dry.
+D3: Tolerating soft diet. Afebrile. Vital signs stable. Discharged on oral cefixime + paracetamol. Review in OPD in 7 days for suture removal.
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [OK] Schema check passed -- all 8 required sections present
+
+
+================================================================================
+3. TRIAGEASSIST -- THE AGENTIC LOOP & RED-FLAG ESCALATION AGENT
+Capability: Multi-Turn Agentic Loop & Deterministic Red-Flag Safety Escalation
+
+Scenario 3.1: Immediate Escalation (Acute Chest Pain / ACS)
+--------------------------------------------------------------------------------
+[PRESENTING COMPLAINT]
+45 year old man, chest pain since 2 hours, sweating
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [DANGER] ESCALATE NOW
+Red Flags Identified: Possible acute coronary syndrome
+Action Required: Immediate 12-lead ECG, high-flow O2, chewable Aspirin 300mg, stat emergency department transport.
+
+
+Scenario 3.2: Immediate Escalation (Acute Stroke / Focal Deficit)
+--------------------------------------------------------------------------------
+[PRESENTING COMPLAINT]
+60 year old, sudden weakness of one side of body, slurred speech
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: [DANGER] ESCALATE NOW
+Red Flags Identified: Possible stroke
+Action Required: Stat non-contrast Head CT, stroke code activation, NPO.
+
+
+Scenario 3.3: Benign Presentation (Multi-Turn Question Loop)
+--------------------------------------------------------------------------------
+[PRESENTING COMPLAINT]
+mild ankle sprain after a fall yesterday
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Turn 1: Asks follow-up question ("How long has this been going on, and is it getting worse?")
+Turn 2: Asks second question ("Can you bear weight on the foot?")
+Turn 3: Asks third question ("Is there any numbness or severe swelling?")
+Final Output (after 3 turns): [OK] No red flags in the information given. Recommends RICE protocol (Rest, Ice, Compression, Elevation).
+
+
+================================================================================
+4. SCREENMATE -- BATCH TOOL USE & SCALE AGENT
+Capability: Tool Use at Scale & Machine-Readable JSON Output
+
+Scenario 4.1: Systematic Review Screening (Hypertension Primary Care)
+--------------------------------------------------------------------------------
+[INCLUSION / EXCLUSION CRITERIA]
+INCLUDE: Primary study (RCT or cohort), Adults 30+, Primary care setting, BP outcome.
+EXCLUDE: Reviews, pediatric population, hospital inpatient setting only.
+
+[ABSTRACTS BLOB] (Abstracts A1 to A6)
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Metrics: Screened: 6 | Include: 2 | Exclude: 2 | Unclear: 2
+Structured Output Table:
+  * A1 -> INCLUDE (Primary care cluster RCT, adults 30+)
+  * A2 -> EXCLUDE (Pediatric population 9-14 yrs)
+  * A3 -> INCLUDE (Adult primary care community clinic)
+  * A4 -> EXCLUDE (Narrative review study)
+  * A5 -> INCLUDE / UNCLEAR (Rural RCT)
+  * A6 -> UNCLEAR (Protocol only, study not commenced)
+
+
+================================================================================
+5. PHARMGUARD -- DRUG INTERACTION & DOSING GUARDRAIL AGENT
 Capability: Deterministic Safety Overrides & Drug Safety Guardrails
 
-Scenario 1.1: High-Risk GI Bleeding Interaction (Warfarin + NSAID)
+Scenario 5.1: High-Risk GI Bleeding Interaction (Warfarin + NSAID)
 --------------------------------------------------------------------------------
-[PRESCRIBED MEDICATIONS]
-Warfarin 5mg daily
-Ibuprofen 400mg TID
-Amlodipine 5mg daily
-
+[PRESCRIBED MEDICATIONS] Warfarin 5mg daily, Ibuprofen 400mg TID, Amlodipine 5mg daily
 [DOCUMENTED ALLERGIES] None
 [RENAL FUNCTION eGFR] 75 mL/min/1.73m2
-[CLINICAL INDICATION] Atrial Fibrillation and Knee Osteoarthritis
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: HIGH-RISK CONTRAINDICATION DETECTED -- LOCAL GUARDRAIL OVERRIDE
 Local Flag: [CONTRAINDICATION] High risk of severe gastrointestinal hemorrhage and major bleeding with co-administration of Warfarin and NSAID.
-Action Plan: Stop Ibuprofen immediately; substitute topical analgesics or Paracetamol 500mg PRN. Check baseline INR and stool occult blood.
+Action Plan: Stop Ibuprofen immediately; substitute Paracetamol 500mg PRN.
 
 
-Scenario 1.2: Renal Contraindication (Metformin in Stage 4 CKD)
+Scenario 5.2: Renal Contraindication (Metformin in Stage 4 CKD)
 --------------------------------------------------------------------------------
-[PRESCRIBED MEDICATIONS]
-Metformin 1000mg BID
-Ramipril 5mg daily
-Atorvastatin 20mg daily
-
-[DOCUMENTED ALLERGIES] None
+[PRESCRIBED MEDICATIONS] Metformin 1000mg BID, Ramipril 5mg daily, Atorvastatin 20mg daily
 [RENAL FUNCTION eGFR] 25 mL/min/1.73m2
-[CLINICAL INDICATION] Type 2 Diabetes Mellitus with Chronic Kidney Disease
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: HIGH-RISK CONTRAINDICATION DETECTED
 Local Flag: [RENAL CONTRAINDICATION] Metformin contraindicated when eGFR < 30 mL/min/1.73m2 (Risk of Lactic Acidosis).
-Action Plan: Discontinue Metformin; initiate Linagliptin 5mg daily or insulin titration. Nephrology consult.
+Action Plan: Stop Metformin; switch to Linagliptin 5mg daily or insulin titration.
 
 
-Scenario 1.3: Documented Anaphylaxis Allergy Alert
+Scenario 5.3: Documented Anaphylaxis Allergy Alert
 --------------------------------------------------------------------------------
-[PRESCRIBED MEDICATIONS]
-Amoxicillin 500mg TID
-Paracetamol 650mg SOS
-
+[PRESCRIBED MEDICATIONS] Amoxicillin 500mg TID, Paracetamol 650mg SOS
 [DOCUMENTED ALLERGIES] Penicillin (Anaphylaxis)
-[RENAL FUNCTION eGFR] 90 mL/min/1.73m2
-[CLINICAL INDICATION] Acute Bacterial Sinusitis
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: HIGH-RISK CONTRAINDICATION DETECTED
 Local Flag: [ALLERGY CONTRAINDICATION] Patient has documented Penicillin allergy; prescribe alternative non-beta-lactam antibiotic.
-Action Plan: Prescribe Azithromycin 500mg daily for 3 days or Levofloxacin 500mg daily.
-
-
-Scenario 1.4: Multi-System Risk (Interaction + Allergy + Severe Renal Impairment)
---------------------------------------------------------------------------------
-[PRESCRIBED MEDICATIONS]
-Warfarin 5mg daily
-Ibuprofen 400mg TID
-Metformin 1000mg BID
-Amoxicillin 500mg TID
-
-[DOCUMENTED ALLERGIES] Penicillin
-[RENAL FUNCTION eGFR] 28 mL/min/1.73m2
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: HIGH-RISK CONTRAINDICATION DETECTED (3 Safety Flags Triggered Simultaneously)
+Action Plan: Switch to Macrolide (Azithromycin 500mg daily).
 
 
 ================================================================================
-2. LABALERT -- CLINICAL LAB INTERPRETER & PANIC VALUE ESCALATOR
+6. LABALERT -- CLINICAL LAB INTERPRETER & PANIC VALUE ESCALATOR
 Capability: Numerical Range Boundary Check & Critical Value Escalation
 
-Scenario 2.1: Severe Hyperkalemia & Myocardial Injury (Panic High)
+Scenario 6.1: Severe Hyperkalemia & Myocardial Injury (Panic High)
 --------------------------------------------------------------------------------
 [LABORATORY REPORT INPUT]
-Potassium: 6.4 mEq/L
-Troponin I: 0.12 ng/mL
-Sodium: 136 mEq/L
-Serum Creatinine: 2.8 mg/dL
-Hemoglobin: 11.2 g/dL
+Potassium: 6.4 mEq/L, Troponin I: 0.12 ng/mL, Sodium: 136 mEq/L, Serum Creatinine: 2.8 mg/dL, Hemoglobin: 11.2 g/dL
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: CRITICAL LAB PANIC VALUES IDENTIFIED -- IMMEDIATE ACTION REQUIRED
-Panic Flags:
-  * Potassium level 6.4 mEq/L is dangerously elevated (>= 6.0 mEq/L).
-  * Troponin I level 0.12 ng/mL is dangerously elevated (>= 0.04 ng/mL).
-Action Plan: Stat 12-lead ECG, IV Calcium Gluconate (cardiac membrane stabilization), Insulin-Glucose shift therapy, ICU consult.
+Panic Flags: Potassium 6.4 mEq/L (PANIC HIGH), Troponin I 0.12 ng/mL (PANIC HIGH).
+Action Plan: Stat 12-lead ECG, IV Calcium Gluconate, Insulin-Glucose shift therapy, ICU consult.
 
 
-Scenario 2.2: Severe Anemia & Thrombocytopenia (Panic Low Bleeding Risk)
+Scenario 6.2: Severe Anemia & Thrombocytopenia (Panic Low Bleeding Risk)
 --------------------------------------------------------------------------------
 [LABORATORY REPORT INPUT]
-Hemoglobin: 5.8 g/dL
-Platelets: 14,000 /uL
-WBC: 3,200 /uL
-Potassium: 4.1 mEq/L
+Hemoglobin: 5.8 g/dL, Platelets: 14,000 /uL, WBC: 3,200 /uL
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: CRITICAL LAB PANIC VALUES IDENTIFIED
-Panic Flags:
-  * Hemoglobin 5.8 g/dL is dangerously low (<= 6.5 g/dL).
-  * Platelet count 14,000 /uL is dangerously low (<= 20,000 /uL).
-Action Plan: Urgent crossmatch & PRBC transfusion, platelet transfusion, hematology consultation.
-
-
-Scenario 2.3: Diabetic Ketoacidosis (DKA) / Severe Acidemia
---------------------------------------------------------------------------------
-[LABORATORY REPORT INPUT]
-Blood Glucose: 440 mg/dL
-pH: 7.15
-Bicarbonate: 10 mEq/L
-Potassium: 5.8 mEq/L
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: CRITICAL LAB PANIC VALUES IDENTIFIED
-Panic Flags:
-  * Glucose 440 mg/dL (PANIC HIGH)
-  * pH 7.15 (PANIC LOW)
-Action Plan: ICU admission, aggressive isotonic saline fluid resuscitation, regular insulin infusion protocol.
-
-
-Scenario 2.4: Normal Baseline Lab Panel (Control Demo)
---------------------------------------------------------------------------------
-[LABORATORY REPORT INPUT]
-Hemoglobin: 13.5 g/dL
-WBC: 7,200 /uL
-Platelets: 250,000 /uL
-Potassium: 4.2 mEq/L
-Sodium: 140 mEq/L
-Serum Creatinine: 0.9 mg/dL
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: No critical panic values detected
-Status: All metrics parsed as NORMAL.
+Panic Flags: Hemoglobin 5.8 g/dL (PANIC LOW), Platelets 14,000 /uL (PANIC LOW).
+Action Plan: Urgent crossmatch & PRBC transfusion, platelet transfusion.
 
 
 ================================================================================
-3. TRIALMATCH -- CLINICAL TRIAL ELIGIBILITY SCREENING AGENT
+7. TRIALMATCH -- CLINICAL TRIAL ELIGIBILITY SCREENING AGENT
 Capability: Multi-Criteria Protocol Matching & Reasoning Matrix
 
-Scenario 3.1: Ineligible Patient (Renal Exclusion Violation)
+Scenario 7.1: Ineligible Patient (Renal Exclusion Violation)
 --------------------------------------------------------------------------------
-[PATIENT PROFILE]
-Patient: 58-year-old male
-Diagnosis: Type 2 Diabetes Mellitus (12 years duration)
-Recent HbA1c: 8.6%
-Renal Function: eGFR 24 mL/min/1.73m2, Serum Creatinine 2.4 mg/dL
-Prior Medications: Metformin, Glimepiride
-
-[PROTOCOL CRITERIA]
-INCLUSION CRITERIA:
-1. Adults aged 18 to 75 years at screening.
-2. Diagnosed with Type 2 Diabetes Mellitus with HbA1c 7.5% - 10.5%.
-EXCLUSION CRITERIA:
-1. eGFR < 30 mL/min/1.73m2 or end-stage renal disease.
+[PATIENT PROFILE] 58yo male, DM2 (12 yrs), HbA1c 8.6%, eGFR 24 mL/min/1.73m2
+[PROTOCOL CRITERIA] Include: Age 18-75, HbA1c 7.5%-10.5%. Exclude: eGFR < 30 mL/min/1.73m2.
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: PATIENT IS INELIGIBLE -- CRITERIA UNMET OR EXCLUSION MET
 Verdict: INELIGIBLE
-Criteria Breakdown Matrix:
-  * Adults aged 18 to 75 years -> [MET]
-  * HbA1c between 7.5% and 10.5% -> [MET]
-  * Exclusion: eGFR < 30 mL/min -> [UNMET] (Violates exclusion clause)
-
-
-Scenario 3.2: Eligible Patient (100% Protocol Match)
---------------------------------------------------------------------------------
-[PATIENT PROFILE]
-Patient: 62-year-old female
-Diagnosis: Type 2 Diabetes Mellitus
-HbA1c: 8.2%
-Renal Function: eGFR 68 mL/min/1.73m2
-Cardiac History: No ACS, stroke, or heart failure.
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: PATIENT IS ELIGIBLE FOR CLINICAL TRIAL RECRUITMENT
-Verdict: ELIGIBLE
-Criteria Breakdown Matrix: 100% Satisfied.
-
-
-Scenario 3.3: Incomplete Data (Missing Laboratory Parameter)
---------------------------------------------------------------------------------
-[PATIENT PROFILE]
-Patient: 45-year-old male
-Diagnosis: Type 2 Diabetes Mellitus
-Renal Function: eGFR not documented in medical record.
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: ELIGIBILITY UNCERTAIN -- ADDITIONAL CLINICAL DATA REQUIRED
-Verdict: NEEDS_MORE_DATA
-Criteria Breakdown Matrix: Exclusion eGFR -> [UNKNOWN] (Requires eGFR lab test prior to enrollment).
+Matrix: Age -> MET, HbA1c -> MET, Exclusion eGFR -> UNMET.
 
 
 ================================================================================
-4. DIFFCHECK -- DIFFERENTIAL DIAGNOSIS & DIAGNOSTIC BIAS SAFEGUARD AGENT
+8. DIFFCHECK -- DIFFERENTIAL DIAGNOSIS & DIAGNOSTIC BIAS SAFEGUARD AGENT
 Capability: Red-Teaming & Cognitive Debiasing (Anchoring Mitigation)
 
-Scenario 4.1: Pleuritic Chest Pain in Young Female on OCP (Anchoring Risk)
+Scenario 8.1: Pleuritic Chest Pain in Young Female on OCP (Anchoring Risk)
 --------------------------------------------------------------------------------
-[PRESENTING SYMPTOMS & HISTORY]
-42-year-old female presents with sudden onset sharp right-sided chest pain worsening on deep inspiration (pleuritic). HR 104 bpm, BP 122/78 mmHg, SpO2 97% on room air. Taking oral contraceptive pills.
-
-[INITIAL WORKING DIAGNOSIS]
-Musculoskeletal chest wall pain / muscle strain
+[PRESENTING SYMPTOMS] 42yo female, sharp right pleuritic chest pain, HR 104, SpO2 97% RA, OCP user.
+[INITIAL WORKING DIAGNOSIS] Musculoskeletal chest wall pain / muscle strain
 
 [EXPECTED AGENT BANNER & OUTPUT]
 Banner: MANDATORY SAFETY CHECKLIST: HIGH-RISK EMERGENCIES TO RULE OUT
-Red-Flag Emergencies:
-  * Pulmonary Embolism (MUST-NOT-MISS)
-  * Acute Coronary Syndrome
-  * Aortic Dissection
-Debiasing Critique: Directly challenges premature closure of attributing pleuritic pain in an OCP user to "muscle strain". Mandates D-Dimer / CTPA & ECG + Troponin.
-
-
-Scenario 4.2: Thunderclap Headache (Premature Closure Safeguard)
---------------------------------------------------------------------------------
-[PRESENTING SYMPTOMS & HISTORY]
-35-year-old male presents with sudden onset excruciating headache reaching peak intensity within 60 seconds ("worst headache of life") during exercise. Mild nuchal rigidity on exam.
-
-[INITIAL WORKING DIAGNOSIS]
-Tension headache / cervical muscle spasm
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: MANDATORY SAFETY CHECKLIST
-Red-Flag Emergencies:
-  * Subarachnoid Hemorrhage (SAH)
-  * Acute Bacterial Meningitis
-  * Cerebral Venous Sinus Thrombosis
-Debiasing Critique: Mandates Non-contrast Head CT and Lumbar Puncture if CT is negative. Rejects benign tension headache diagnosis until SAH is excluded.
-
-
-Scenario 4.3: Severe Lower Abdominal Pain in Female of Childbearing Age
---------------------------------------------------------------------------------
-[PRESENTING SYMPTOMS & HISTORY]
-26-year-old female presents with severe right lower quadrant abdominal pain, nausea, and spotty vaginal bleeding. LMP 6 weeks ago. BP 95/60 mmHg, HR 112 bpm.
-
-[INITIAL WORKING DIAGNOSIS]
-Acute Gastroenteritis / Dysmenorrhea
-
-[EXPECTED AGENT BANNER & OUTPUT]
-Banner: MANDATORY SAFETY CHECKLIST
-Red-Flag Emergencies:
-  * Ruptured Ectopic Pregnancy
-  * Acute Appendicitis
-  * Ovarian Torsion
-Debiasing Critique: Highlights hypovolemic signs (BP 95/60, HR 112); mandates stat urine/serum beta-hCG and pelvic ultrasound before discharge.
+Red Flags: Pulmonary Embolism (MUST-NOT-MISS), Acute Coronary Syndrome, Aortic Dissection.
+Debiasing Critique: Challenges premature closure of attributing pleuritic pain in an OCP user to muscle strain. Mandates D-Dimer / CTPA.
