@@ -1,0 +1,251 @@
+================================================================================
+LIVE DEMO CLINICAL AI AGENT PROMPT PACK
+3-4 Clinical Scenarios & Expected Outputs for 4 New Agents
+================================================================================
+
+1. PHARMGUARD -- DRUG INTERACTION & DOSING GUARDRAIL AGENT
+Capability: Deterministic Safety Overrides & Drug Safety Guardrails
+
+Scenario 1.1: High-Risk GI Bleeding Interaction (Warfarin + NSAID)
+--------------------------------------------------------------------------------
+[PRESCRIBED MEDICATIONS]
+Warfarin 5mg daily
+Ibuprofen 400mg TID
+Amlodipine 5mg daily
+
+[DOCUMENTED ALLERGIES] None
+[RENAL FUNCTION eGFR] 75 mL/min/1.73m2
+[CLINICAL INDICATION] Atrial Fibrillation and Knee Osteoarthritis
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: HIGH-RISK CONTRAINDICATION DETECTED -- LOCAL GUARDRAIL OVERRIDE
+Local Flag: [CONTRAINDICATION] High risk of severe gastrointestinal hemorrhage and major bleeding with co-administration of Warfarin and NSAID.
+Action Plan: Stop Ibuprofen immediately; substitute topical analgesics or Paracetamol 500mg PRN. Check baseline INR and stool occult blood.
+
+
+Scenario 1.2: Renal Contraindication (Metformin in Stage 4 CKD)
+--------------------------------------------------------------------------------
+[PRESCRIBED MEDICATIONS]
+Metformin 1000mg BID
+Ramipril 5mg daily
+Atorvastatin 20mg daily
+
+[DOCUMENTED ALLERGIES] None
+[RENAL FUNCTION eGFR] 25 mL/min/1.73m2
+[CLINICAL INDICATION] Type 2 Diabetes Mellitus with Chronic Kidney Disease
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: HIGH-RISK CONTRAINDICATION DETECTED
+Local Flag: [RENAL CONTRAINDICATION] Metformin contraindicated when eGFR < 30 mL/min/1.73m2 (Risk of Lactic Acidosis).
+Action Plan: Discontinue Metformin; initiate Linagliptin 5mg daily or insulin titration. Nephrology consult.
+
+
+Scenario 1.3: Documented Anaphylaxis Allergy Alert
+--------------------------------------------------------------------------------
+[PRESCRIBED MEDICATIONS]
+Amoxicillin 500mg TID
+Paracetamol 650mg SOS
+
+[DOCUMENTED ALLERGIES] Penicillin (Anaphylaxis)
+[RENAL FUNCTION eGFR] 90 mL/min/1.73m2
+[CLINICAL INDICATION] Acute Bacterial Sinusitis
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: HIGH-RISK CONTRAINDICATION DETECTED
+Local Flag: [ALLERGY CONTRAINDICATION] Patient has documented Penicillin allergy; prescribe alternative non-beta-lactam antibiotic.
+Action Plan: Prescribe Azithromycin 500mg daily for 3 days or Levofloxacin 500mg daily.
+
+
+Scenario 1.4: Multi-System Risk (Interaction + Allergy + Severe Renal Impairment)
+--------------------------------------------------------------------------------
+[PRESCRIBED MEDICATIONS]
+Warfarin 5mg daily
+Ibuprofen 400mg TID
+Metformin 1000mg BID
+Amoxicillin 500mg TID
+
+[DOCUMENTED ALLERGIES] Penicillin
+[RENAL FUNCTION eGFR] 28 mL/min/1.73m2
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: HIGH-RISK CONTRAINDICATION DETECTED (3 Safety Flags Triggered Simultaneously)
+
+
+================================================================================
+2. LABALERT -- CLINICAL LAB INTERPRETER & PANIC VALUE ESCALATOR
+Capability: Numerical Range Boundary Check & Critical Value Escalation
+
+Scenario 2.1: Severe Hyperkalemia & Myocardial Injury (Panic High)
+--------------------------------------------------------------------------------
+[LABORATORY REPORT INPUT]
+Potassium: 6.4 mEq/L
+Troponin I: 0.12 ng/mL
+Sodium: 136 mEq/L
+Serum Creatinine: 2.8 mg/dL
+Hemoglobin: 11.2 g/dL
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: CRITICAL LAB PANIC VALUES IDENTIFIED -- IMMEDIATE ACTION REQUIRED
+Panic Flags:
+  * Potassium level 6.4 mEq/L is dangerously elevated (>= 6.0 mEq/L).
+  * Troponin I level 0.12 ng/mL is dangerously elevated (>= 0.04 ng/mL).
+Action Plan: Stat 12-lead ECG, IV Calcium Gluconate (cardiac membrane stabilization), Insulin-Glucose shift therapy, ICU consult.
+
+
+Scenario 2.2: Severe Anemia & Thrombocytopenia (Panic Low Bleeding Risk)
+--------------------------------------------------------------------------------
+[LABORATORY REPORT INPUT]
+Hemoglobin: 5.8 g/dL
+Platelets: 14,000 /uL
+WBC: 3,200 /uL
+Potassium: 4.1 mEq/L
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: CRITICAL LAB PANIC VALUES IDENTIFIED
+Panic Flags:
+  * Hemoglobin 5.8 g/dL is dangerously low (<= 6.5 g/dL).
+  * Platelet count 14,000 /uL is dangerously low (<= 20,000 /uL).
+Action Plan: Urgent crossmatch & PRBC transfusion, platelet transfusion, hematology consultation.
+
+
+Scenario 2.3: Diabetic Ketoacidosis (DKA) / Severe Acidemia
+--------------------------------------------------------------------------------
+[LABORATORY REPORT INPUT]
+Blood Glucose: 440 mg/dL
+pH: 7.15
+Bicarbonate: 10 mEq/L
+Potassium: 5.8 mEq/L
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: CRITICAL LAB PANIC VALUES IDENTIFIED
+Panic Flags:
+  * Glucose 440 mg/dL (PANIC HIGH)
+  * pH 7.15 (PANIC LOW)
+Action Plan: ICU admission, aggressive isotonic saline fluid resuscitation, regular insulin infusion protocol.
+
+
+Scenario 2.4: Normal Baseline Lab Panel (Control Demo)
+--------------------------------------------------------------------------------
+[LABORATORY REPORT INPUT]
+Hemoglobin: 13.5 g/dL
+WBC: 7,200 /uL
+Platelets: 250,000 /uL
+Potassium: 4.2 mEq/L
+Sodium: 140 mEq/L
+Serum Creatinine: 0.9 mg/dL
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: No critical panic values detected
+Status: All metrics parsed as NORMAL.
+
+
+================================================================================
+3. TRIALMATCH -- CLINICAL TRIAL ELIGIBILITY SCREENING AGENT
+Capability: Multi-Criteria Protocol Matching & Reasoning Matrix
+
+Scenario 3.1: Ineligible Patient (Renal Exclusion Violation)
+--------------------------------------------------------------------------------
+[PATIENT PROFILE]
+Patient: 58-year-old male
+Diagnosis: Type 2 Diabetes Mellitus (12 years duration)
+Recent HbA1c: 8.6%
+Renal Function: eGFR 24 mL/min/1.73m2, Serum Creatinine 2.4 mg/dL
+Prior Medications: Metformin, Glimepiride
+
+[PROTOCOL CRITERIA]
+INCLUSION CRITERIA:
+1. Adults aged 18 to 75 years at screening.
+2. Diagnosed with Type 2 Diabetes Mellitus with HbA1c 7.5% - 10.5%.
+EXCLUSION CRITERIA:
+1. eGFR < 30 mL/min/1.73m2 or end-stage renal disease.
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: PATIENT IS INELIGIBLE -- CRITERIA UNMET OR EXCLUSION MET
+Verdict: INELIGIBLE
+Criteria Breakdown Matrix:
+  * Adults aged 18 to 75 years -> [MET]
+  * HbA1c between 7.5% and 10.5% -> [MET]
+  * Exclusion: eGFR < 30 mL/min -> [UNMET] (Violates exclusion clause)
+
+
+Scenario 3.2: Eligible Patient (100% Protocol Match)
+--------------------------------------------------------------------------------
+[PATIENT PROFILE]
+Patient: 62-year-old female
+Diagnosis: Type 2 Diabetes Mellitus
+HbA1c: 8.2%
+Renal Function: eGFR 68 mL/min/1.73m2
+Cardiac History: No ACS, stroke, or heart failure.
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: PATIENT IS ELIGIBLE FOR CLINICAL TRIAL RECRUITMENT
+Verdict: ELIGIBLE
+Criteria Breakdown Matrix: 100% Satisfied.
+
+
+Scenario 3.3: Incomplete Data (Missing Laboratory Parameter)
+--------------------------------------------------------------------------------
+[PATIENT PROFILE]
+Patient: 45-year-old male
+Diagnosis: Type 2 Diabetes Mellitus
+Renal Function: eGFR not documented in medical record.
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: ELIGIBILITY UNCERTAIN -- ADDITIONAL CLINICAL DATA REQUIRED
+Verdict: NEEDS_MORE_DATA
+Criteria Breakdown Matrix: Exclusion eGFR -> [UNKNOWN] (Requires eGFR lab test prior to enrollment).
+
+
+================================================================================
+4. DIFFCHECK -- DIFFERENTIAL DIAGNOSIS & DIAGNOSTIC BIAS SAFEGUARD AGENT
+Capability: Red-Teaming & Cognitive Debiasing (Anchoring Mitigation)
+
+Scenario 4.1: Pleuritic Chest Pain in Young Female on OCP (Anchoring Risk)
+--------------------------------------------------------------------------------
+[PRESENTING SYMPTOMS & HISTORY]
+42-year-old female presents with sudden onset sharp right-sided chest pain worsening on deep inspiration (pleuritic). HR 104 bpm, BP 122/78 mmHg, SpO2 97% on room air. Taking oral contraceptive pills.
+
+[INITIAL WORKING DIAGNOSIS]
+Musculoskeletal chest wall pain / muscle strain
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: MANDATORY SAFETY CHECKLIST: HIGH-RISK EMERGENCIES TO RULE OUT
+Red-Flag Emergencies:
+  * Pulmonary Embolism (MUST-NOT-MISS)
+  * Acute Coronary Syndrome
+  * Aortic Dissection
+Debiasing Critique: Directly challenges premature closure of attributing pleuritic pain in an OCP user to "muscle strain". Mandates D-Dimer / CTPA & ECG + Troponin.
+
+
+Scenario 4.2: Thunderclap Headache (Premature Closure Safeguard)
+--------------------------------------------------------------------------------
+[PRESENTING SYMPTOMS & HISTORY]
+35-year-old male presents with sudden onset excruciating headache reaching peak intensity within 60 seconds ("worst headache of life") during exercise. Mild nuchal rigidity on exam.
+
+[INITIAL WORKING DIAGNOSIS]
+Tension headache / cervical muscle spasm
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: MANDATORY SAFETY CHECKLIST
+Red-Flag Emergencies:
+  * Subarachnoid Hemorrhage (SAH)
+  * Acute Bacterial Meningitis
+  * Cerebral Venous Sinus Thrombosis
+Debiasing Critique: Mandates Non-contrast Head CT and Lumbar Puncture if CT is negative. Rejects benign tension headache diagnosis until SAH is excluded.
+
+
+Scenario 4.3: Severe Lower Abdominal Pain in Female of Childbearing Age
+--------------------------------------------------------------------------------
+[PRESENTING SYMPTOMS & HISTORY]
+26-year-old female presents with severe right lower quadrant abdominal pain, nausea, and spotty vaginal bleeding. LMP 6 weeks ago. BP 95/60 mmHg, HR 112 bpm.
+
+[INITIAL WORKING DIAGNOSIS]
+Acute Gastroenteritis / Dysmenorrhea
+
+[EXPECTED AGENT BANNER & OUTPUT]
+Banner: MANDATORY SAFETY CHECKLIST
+Red-Flag Emergencies:
+  * Ruptured Ectopic Pregnancy
+  * Acute Appendicitis
+  * Ovarian Torsion
+Debiasing Critique: Highlights hypovolemic signs (BP 95/60, HR 112); mandates stat urine/serum beta-hCG and pelvic ultrasound before discharge.
