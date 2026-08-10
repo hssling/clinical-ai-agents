@@ -514,8 +514,9 @@ and explicitly critiques the initial impression before accepting a benign diagno
 
 
 # ---------------------------------------------------------------- 9. RadVision
-else:
+elif page == "vision":
     st.title("RadVision")
+
     st.caption("**Capability: multimodal clinical vision.** Combines medical imaging (Chest X-Ray, Derm, ECG) "
                "with clinical history, applying deterministic image quality validation and critical red-flag safety triggers.")
 
