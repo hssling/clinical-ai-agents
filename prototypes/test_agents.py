@@ -8,10 +8,26 @@ import os
 
 os.environ["MOCK_MODE"] = "1"
 
-from agents import diffcheck, discharge, guidebot, labalert, multimodal, pharmguard, screenmate, triage, trialmatch  # noqa: E402
+from agents import (  # noqa: E402
+    chartvision,
+    diffcheck,
+    discharge,
+    fundusvision,
+    guidebot,
+    labalert,
+    multimodal,
+    otoscope,
+    pathoscan,
+    pharmguard,
+    screenmate,
+    triage,
+    trialmatch,
+    woundtrack,
+)
 import samples  # noqa: E402
 
 failures: list[str] = []
+
 
 
 
@@ -167,7 +183,63 @@ bad_res = multimodal.analyze_clinical_image(
 check("rejects corrupted/short image payloads", not bad_res.quality_check.is_valid, "correctly flagged invalid")
 
 
+print("\n=== 10. PathoScan (digital pathology) ===")
+p_res = pathoscan.analyze_pathology_slide(
+    image_bytes=img_bytes,
+    file_name="biopsy_lvi.jpg",
+    clinical_context="Core biopsy showing high mitotic index and lymphovascular invasion",
+    tissue_type="Breast Tissue Biopsy",
+)
+check("detects malignancy alert (lymphovascular invasion)", p_res.has_critical_malignancy, f"alerts: {p_res.alerts}")
+check("generates histology report", len(p_res.report) > 50, f"report length: {len(p_res.report)}")
+
+
+print("\n=== 11. WoundTrack (wound staging) ===")
+w_res = woundtrack.analyze_wound_image(
+    image_bytes=img_bytes,
+    file_name="diabetic_foot.jpg",
+    clinical_context="Plantar ulcer probe to bone positive with spreading erythema",
+    location="Plantar Surface 1st MTP Joint",
+)
+check("detects critical infection risk (exposed bone)", w_res.has_critical_infection, f"alerts: {w_res.alerts}")
+check("generates wound staging report", len(w_res.report) > 50, f"report length: {len(w_res.report)}")
+
+
+print("\n=== 12. ChartVision (prescription OCR) ===")
+c_res = chartvision.digitize_clinical_chart(
+    image_bytes=img_bytes,
+    file_name="prescription_insulin.jpg",
+    context_notes="Rx: Insulin 10U SC AC TID and Metformin 1000mg BID",
+    document_type="Handwritten Prescription",
+)
+check("detects high-alert medication (Insulin)", c_res.has_high_alert_drug, f"alerts: {c_res.alerts}")
+check("generates chart transcription report", len(c_res.report) > 50, f"report length: {len(c_res.report)}")
+
+
+print("\n=== 13. FundusVision (retinal screening) ===")
+f_res = fundusvision.analyze_fundus_image(
+    image_bytes=img_bytes,
+    file_name="fundus_papilledema.jpg",
+    clinical_context="Severe headache and bilateral disc swelling papilledema",
+    eye_side="Bilateral Fundus (OU)",
+)
+check("detects emergency papilledema alert", f_res.has_papilledema_alert, f"alerts: {f_res.alerts}")
+check("generates retinal screening report", len(f_res.report) > 50, f"report length: {len(f_res.report)}")
+
+
+print("\n=== 14. OtoscopeAI (ENT otoscopy) ===")
+o_res = otoscope.analyze_otoscopy_image(
+    image_bytes=img_bytes,
+    file_name="otoscopy_mastoiditis.jpg",
+    clinical_context="Otalgia with acute mastoiditis and post-auricular swelling",
+    ear_side="Right Ear (AD)",
+)
+check("detects critical ENT alert (mastoiditis)", o_res.has_critical_ent_flag, f"alerts: {o_res.alerts}")
+check("generates otoscopy report", len(o_res.report) > 50, f"report length: {len(o_res.report)}")
+
+
 print(f"\n{'=' * 46}")
 print("ALL PASS" if not failures else f"{len(failures)} FAILURE(S): {failures}")
 raise SystemExit(1 if failures else 0)
+
 

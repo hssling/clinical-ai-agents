@@ -41,7 +41,23 @@ def _bridge_secrets() -> None:
 _bridge_secrets()
 
 import samples  # noqa: E402 - must follow the secrets bridge
-from agents import diffcheck, discharge, guidebot, labalert, multimodal, pharmguard, provider, screenmate, triage, trialmatch  # noqa: E402
+from agents import (  # noqa: E402
+    chartvision,
+    diffcheck,
+    discharge,
+    fundusvision,
+    guidebot,
+    labalert,
+    multimodal,
+    otoscope,
+    pathoscan,
+    pharmguard,
+    provider,
+    screenmate,
+    triage,
+    trialmatch,
+    woundtrack,
+)
 from agents.retrieval import load_sections  # noqa: E402
 
 st.set_page_config(page_title="Clinical AI Agents — Live Demo", page_icon="🩺", layout="wide")
@@ -80,7 +96,13 @@ PAGES = {
     "7 · TrialMatch — criteria matrix": "trial",
     "8 · DiffCheck — debiasing": "diff",
     "9 · RadVision — multimodal vision": "vision",
+    "10 · PathoScan — digital pathology": "pathology",
+    "11 · WoundTrack — wound staging": "wound",
+    "12 · ChartVision — prescription OCR": "chart",
+    "13 · FundusVision — retinal screening": "fundus",
+    "14 · OtoscopeAI — ENT diagnostic vision": "otoscope",
 }
+
 
 
 with st.sidebar:
@@ -565,5 +587,234 @@ else:
 3. Image bytes and clinical history are packaged into a **multimodal vision request** sent to the LLM (Gemini 2.0 Flash / GPT-4o / OpenRouter).
 4. If running offline (`MOCK_MODE=1`), pre-audited diagnostic vision reports are served instantly without network latency.
 """)
+
+
+# ---------------------------------------------------------------- 10. PathoScan
+elif page == "pathology":
+    st.title("PathoScan")
+    st.caption("**Capability: digital pathology & histology analysis.** Evaluates biopsy photomicrographs, "
+               "incorporating deterministic malignancy safety triggers (vascular invasion, high mitotic index) and IHC recommendations.")
+
+    patho_samples = getattr(samples, "PATHOLOGY_SAMPLES", getattr(pathoscan, "PATHOLOGY_SAMPLES", []))
+    st.write("**Try a sample histology case:**")
+    cols = st.columns(len(patho_samples))
+    for col, sample_case in zip(cols, patho_samples):
+        if col.button(sample_case["label"], key=f"ps_{sample_case['tissue_type']}", use_container_width=True):
+            st.session_state.patho_context = sample_case["context"]
+            st.session_state.patho_tissue = sample_case["tissue_type"]
+
+    tissue_in = st.text_input("Specimen / Tissue Type",
+                              value=st.session_state.get("patho_tissue", "Breast Tissue Biopsy"))
+    context_in = st.text_area("Clinical History & Histological Details",
+                              value=st.session_state.get("patho_context", patho_samples[0]["context"] if patho_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload Biopsy Photomicrograph (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(pathoscan.TINY_PNG_B64)
+
+    if st.button("Run Digital Pathology Assessment", type="primary"):
+        result = pathoscan.analyze_pathology_slide(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "biopsy_sample.jpg",
+            clinical_context=context_in,
+            tissue_type=tissue_in,
+        )
+
+        if result.has_critical_malignancy:
+            banner("danger", "🚨 HIGH-GRADE MALIGNANCY RED-FLAG TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Biopsy slides undergo local keyword scanning for aggressive features (lymphovascular invasion, high mitotic rate)
+before the vision model outlines nuclear grading and recommends specific immunoperoxidase panels (ER/PR/HER2/Ki-67).
+""")
+
+
+# ---------------------------------------------------------------- 11. WoundTrack
+elif page == "wound":
+    st.title("WoundTrack")
+    st.caption("**Capability: visual wound staging & tissue composition.** Evaluates diabetic foot ulcers & pressure injuries, "
+               "calculating tissue composition percentages (granulation vs slough vs eschar) and infection safety risks.")
+
+    wound_samples = getattr(samples, "WOUND_SAMPLES", getattr(woundtrack, "WOUND_SAMPLES", []))
+    st.write("**Try a sample wound case:**")
+    cols = st.columns(len(wound_samples))
+    for col, sample_case in zip(cols, wound_samples):
+        if col.button(sample_case["label"], key=f"ws_{sample_case['location']}", use_container_width=True):
+            st.session_state.wound_context = sample_case["context"]
+            st.session_state.wound_location = sample_case["location"]
+
+    loc_in = st.text_input("Anatomical Wound Location",
+                           value=st.session_state.get("wound_location", "Plantar Surface 1st MTP Joint"))
+    context_in = st.text_area("Patient History & Clinical Features",
+                              value=st.session_state.get("wound_context", wound_samples[0]["context"] if wound_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload Wound Photograph (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(woundtrack.TINY_PNG_B64)
+
+    if st.button("Run Wound Staging & Infection Assessment", type="primary"):
+        result = woundtrack.analyze_wound_image(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "wound_sample.jpg",
+            clinical_context=context_in,
+            location=loc_in,
+        )
+
+        if result.has_critical_infection:
+            banner("danger", "🚨 CRITICAL WOUND INFECTION ALERT TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Exposed bone (probe-to-bone positive) and spreading erythema trigger immediate osteomyelitis/necrotizing infection alerts
+prior to generating Wagner/NPUAP staging and tissue breakdown percentages.
+""")
+
+
+# ---------------------------------------------------------------- 12. ChartVision
+elif page == "chart":
+    st.title("ChartVision")
+    st.caption("**Capability: prescription OCR & high-alert drug double-check.** Transcribes handwritten doctor orders, "
+               "detecting high-alert medications (Insulin, Heparin, Digoxin) and dosing unit ambiguities.")
+
+    chart_samples = getattr(samples, "CHART_SAMPLES", getattr(chartvision, "CHART_SAMPLES", []))
+    st.write("**Try a sample handwritten order case:**")
+    cols = st.columns(len(chart_samples))
+    for col, sample_case in zip(cols, chart_samples):
+        if col.button(sample_case["label"], key=f"cs_{sample_case['document_type']}", use_container_width=True):
+            st.session_state.chart_context = sample_case["context"]
+            st.session_state.chart_type = sample_case["document_type"]
+
+    type_in = st.selectbox("Document Category", ["Handwritten Prescription", "ICU Flowsheet Note", "Outpatient Consultation Card"],
+                           index=0)
+    context_in = st.text_area("Order Context / Notes",
+                              value=st.session_state.get("chart_context", chart_samples[0]["context"] if chart_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload Prescription / Chart Image (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(chartvision.TINY_PNG_B64)
+
+    if st.button("Digitize Order & Run Medication Safety Audit", type="primary"):
+        result = chartvision.digitize_clinical_chart(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "chart_sample.jpg",
+            context_notes=context_in,
+            document_type=type_in,
+        )
+
+        if result.has_high_alert_drug:
+            banner("warn", "⚠️ HIGH-ALERT MEDICATION VERIFICATION TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+High-risk drugs (Insulin, Anticoagulants, Methotrexate) trigger automatic double-check protocols, and dangerous abbreviations
+(like 'U' for units) are flagged to prevent medication transcription errors.
+""")
+
+
+# ---------------------------------------------------------------- 13. FundusVision
+elif page == "fundus":
+    st.title("FundusVision")
+    st.caption("**Capability: retinal fundus screening & papilledema alert.** Grades Diabetic & Hypertensive Retinopathy "
+               "while enforcing deterministic safety triggers for Bilateral Papilledema (elevated ICP).")
+
+    fundus_samples = getattr(samples, "FUNDUS_SAMPLES", getattr(fundusvision, "FUNDUS_SAMPLES", []))
+    st.write("**Try a sample fundus screening case:**")
+    cols = st.columns(len(fundus_samples))
+    for col, sample_case in zip(cols, fundus_samples):
+        if col.button(sample_case["label"], key=f"fs_{sample_case['eye_side']}", use_container_width=True):
+            st.session_state.fundus_context = sample_case["context"]
+            st.session_state.fundus_side = sample_case["eye_side"]
+
+    side_in = st.selectbox("Eye Examined", ["Right Eye (OD)", "Left Eye (OS)", "Bilateral Fundus (OU)"], index=0)
+    context_in = st.text_area("Patient History & Symptoms",
+                              value=st.session_state.get("fundus_context", fundus_samples[0]["context"] if fundus_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload Fundus Photograph (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(fundusvision.TINY_PNG_B64)
+
+    if st.button("Run Retinal Vision Assessment", type="primary"):
+        result = fundusvision.analyze_fundus_image(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "fundus_sample.jpg",
+            clinical_context=context_in,
+            eye_side=side_in,
+        )
+
+        if result.has_papilledema_alert:
+            banner("danger", "🚨 EMERGENCY NEUROLOGICAL ALERT TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Optic disc margin blurring and papilledema trigger immediate emergency neuro-imaging warnings (Brain MRI/CT)
+to rule out intracranial mass lesions before providing ETDRS retinopathy staging.
+""")
+
+
+# ---------------------------------------------------------------- 14. OtoscopeAI
+else:
+    st.title("OtoscopeAI")
+    st.caption("**Capability: ENT otoscopic visual diagnostics.** Evaluates tympanic membrane opacity & mobility, "
+               "enforcing deterministic red flags for Acute Mastoiditis, TM Perforation, and Necrotizing Otitis Externa.")
+
+    oto_samples = getattr(samples, "OTOSCOPE_SAMPLES", getattr(otoscope, "OTOSCOPE_SAMPLES", []))
+    st.write("**Try a sample otoscopic case:**")
+    cols = st.columns(len(oto_samples))
+    for col, sample_case in zip(cols, oto_samples):
+        if col.button(sample_case["label"], key=f"os_{sample_case['ear_side']}", use_container_width=True):
+            st.session_state.oto_context = sample_case["context"]
+            st.session_state.oto_side = sample_case["ear_side"]
+
+    ear_in = st.selectbox("Ear Examined", ["Right Ear (AD)", "Left Ear (AS)", "Bilateral Ears"], index=0)
+    context_in = st.text_area("Patient Otalgia & Clinical Symptoms",
+                              value=st.session_state.get("oto_context", oto_samples[0]["context"] if oto_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload Otoscopic Image (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(otoscope.TINY_PNG_B64)
+
+    if st.button("Run Otoscopic Diagnostic Analysis", type="primary"):
+        result = otoscope.analyze_otoscopy_image(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "otoscopy_sample.jpg",
+            clinical_context=context_in,
+            ear_side=ear_in,
+        )
+
+        if result.has_critical_ent_flag:
+            banner("danger", "🚨 CRITICAL ENT RED-FLAG TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+Retroauricular swelling or TM perforations trigger immediate emergency ENT referral alerts and ototoxic drop warnings
+prior to analyzing tympanic membrane erythema and bulging for Acute Otitis Media.
+""")
+
 
 

@@ -158,4 +158,95 @@ MULTIMODAL_SAMPLES = [
     },
 ]
 
+# 10. PathoScan Samples
+PATHOLOGY_SAMPLES = [
+    {
+        "label": "🔬 Breast Biopsy: Invasive Ductal Carcinoma",
+        "tissue_type": "Breast Tissue Biopsy",
+        "file_name": "breast_biopsy_he_stain.jpg",
+        "context": "Core needle biopsy of 2.5cm firm breast mass in a 52-year-old female. H&E stain, high power field. High mitotic count and lymphovascular invasion noted.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🧫 Lymph Node: Granulomatous Lymphadenitis",
+        "tissue_type": "Lymph Node Biopsy",
+        "file_name": "lymph_node_granuloma_tb.jpg",
+        "context": "Excisional cervical lymph node biopsy in a 34-year-old male with chronic fever and night sweats. Caseating necrotizing granulomas with Langhans giant cells.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+# 11. WoundTrack Samples
+WOUND_SAMPLES = [
+    {
+        "label": "🦶 Diabetic Foot Ulcer: Plantar Surface (Wagner Grade 3)",
+        "location": "Plantar Surface 1st MTP Joint",
+        "file_name": "diabetic_foot_ulcer_exposed_bone.jpg",
+        "context": "64-year-old diabetic male with deep chronic ulcer on plantar aspect of right foot. Probe-to-bone positive, purulent discharge, spreading erythema 3cm.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🏥 Post-Op Surgical Wound: Sacral Pressure Injury",
+        "location": "Sacral Area",
+        "file_name": "sacral_pressure_ulcer_stage3.jpg",
+        "context": "78-year-old bedbound female post-hip fracture repair. Sacral Stage 3 pressure injury with 40% slough and 60% red granulation tissue. No osteomyelitis.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+# 12. ChartVision Samples
+CHART_SAMPLES = [
+    {
+        "label": "✍️ Prescription: Ciprofloxacin & Insulin Order",
+        "document_type": "Handwritten Prescription",
+        "file_name": "handwritten_prescription_insulin.jpg",
+        "context": "Rx: Ciprofloxacin 500mg BID x7d. Regular Insulin 10U SC AC TID. Metformin 1000mg BID. Dr. R. Sharma, MD.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "📋 ICU Flowsheet: Inotrope & Heparin Infusion",
+        "document_type": "ICU Flowsheet Note",
+        "file_name": "icu_flowsheet_heparin_dopamine.jpg",
+        "context": "ICU Day 2: Noradrenaline 0.1 mcg/kg/min IV. Heparin IV infusion 1000 units/hr. Check APTT q6h.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+# 13. FundusVision Samples
+FUNDUS_SAMPLES = [
+    {
+        "label": "👁️ Retinal Fundus: Severe NPDR (Diabetic Retinopathy)",
+        "eye_side": "Right Eye (OD)",
+        "file_name": "fundus_diabetic_retinopathy_npdr.jpg",
+        "context": "56-year-old male with 14-year history of Type 2 DM (HbA1c 9.2%). Multiple hard exudates, microaneurysms, and macular edema.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🚨 Optic Disc: Bilateral Papilledema (Elevated ICP)",
+        "eye_side": "Bilateral Fundus (OU)",
+        "file_name": "fundus_papilledema_elevated_icp.jpg",
+        "context": "28-year-old female presenting with severe morning headaches, pulsatile tinnitus, and transient visual obscurations. Optic disc margin blurring and hyperemia.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+# 14. OtoscopeAI Samples
+OTOSCOPE_SAMPLES = [
+    {
+        "label": "👂 Otoscopy: Acute Otitis Media (Bulging TM)",
+        "ear_side": "Right Ear (AD)",
+        "file_name": "otoscopy_acute_otitis_media.jpg",
+        "context": "3-year-old child with 2 days of high fever (102°F), severe ear otalgia, and irritability. Bulging erythematous tympanic membrane with loss of cone of light.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🚨 Otoscopy: Acute Mastoiditis (Retroauricular Swelling)",
+        "ear_side": "Left Ear (AS)",
+        "file_name": "otoscopy_acute_mastoiditis.jpg",
+        "context": "6-year-old child with persistent untreated otitis media presenting with post-auricular tenderness, erythema, and outward displacement of the pinna.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+
 
