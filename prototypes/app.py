@@ -45,6 +45,7 @@ from agents import (  # noqa: E402
     chartvision,
     diffcheck,
     discharge,
+    ecgvision,
     fundusvision,
     guidebot,
     labalert,
@@ -101,6 +102,7 @@ PAGES = {
     "12 · ChartVision — prescription OCR": "chart",
     "13 · FundusVision — retinal screening": "fundus",
     "14 · OtoscopeAI — ENT diagnostic vision": "otoscope",
+    "15 · ECGVision — cardiac ECG diagnostics": "ecg",
 }
 
 
@@ -779,7 +781,7 @@ to rule out intracranial mass lesions before providing ETDRS retinopathy staging
 
 
 # ---------------------------------------------------------------- 14. OtoscopeAI
-else:
+elif page == "otoscope":
     st.title("OtoscopeAI")
     st.caption("**Capability: ENT otoscopic visual diagnostics.** Evaluates tympanic membrane opacity & mobility, "
                "enforcing deterministic red flags for Acute Mastoiditis, TM Perforation, and Necrotizing Otitis Externa.")
@@ -821,6 +823,53 @@ else:
 Retroauricular swelling or TM perforations trigger immediate emergency ENT referral alerts and ototoxic drop warnings
 prior to analyzing tympanic membrane erythema and bulging for Acute Otitis Media.
 """)
+
+
+# ---------------------------------------------------------------- 15. ECGVision
+else:
+    st.title("ECGVision")
+    st.caption("**Capability: 12-lead ECG telemetry & cardiac red-flag triggers.** Evaluates ischemic ST-T changes, "
+               "rhythm disturbances, and interval prolongations while enforcing deterministic safeguards for Acute STEMI, "
+               "Sustained Ventricular Tachycardia, Severe Hyperkalemia, and QTc Prolongation.")
+
+    ecg_samples = getattr(samples, "ECG_SAMPLES", getattr(ecgvision, "ECG_SAMPLES", []))
+    st.write("**Try a sample cardiology case:**")
+    cols = st.columns(len(ecg_samples))
+    for col, sample_case in zip(cols, ecg_samples):
+        if col.button(sample_case["label"], key=f"es_{sample_case['file_name']}", use_container_width=True):
+            st.session_state.ecg_context = sample_case["context"]
+            st.session_state.ecg_lead = sample_case["lead_view"]
+
+    lead_in = st.selectbox("ECG Format / Lead View", ["12-Lead ECG", "Rhythm Strip (Lead II)", "Bedside Telemetry Monitor"], index=0)
+    context_in = st.text_area("Patient Presentation & Vitals",
+                              value=st.session_state.get("ecg_context", ecg_samples[0]["context"] if ecg_samples else ""),
+                              height=120)
+
+    uploaded_file = st.file_uploader("Upload ECG Image / Telemetry Strip (PNG, JPG)", type=["png", "jpg", "jpeg"])
+    import base64
+    image_bytes = uploaded_file.read() if uploaded_file else base64.b64decode(ecgvision.TINY_PNG_B64)
+
+    if st.button("Run ECG Diagnostic & Cardiac Safety Assessment", type="primary"):
+        result = ecgvision.analyze_ecg_image(
+            image_bytes=image_bytes,
+            file_name=uploaded_file.name if uploaded_file else "ecg_sample.png",
+            clinical_context=context_in,
+            lead_view=lead_in,
+        )
+
+        if result.has_critical_cardiac_flag:
+            banner("danger", "🚨 CRITICAL CARDIAC SAFETY RED-FLAG TRIGGERED")
+            for alert in result.alerts:
+                st.write(f"- {alert}")
+
+        st.markdown(result.report)
+
+    with st.expander("What just happened?"):
+        st.markdown("""
+ST-elevation patterns (V1-V4, II/III/aVF) or hyperkalemic T-waves trigger immediate STAT emergency protocols
+(Cath Lab activation <90 min, IV Calcium Gluconate) locally before model output synthesis.
+""")
+
 
 
 

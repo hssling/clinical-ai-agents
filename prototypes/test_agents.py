@@ -12,6 +12,7 @@ from agents import (  # noqa: E402
     chartvision,
     diffcheck,
     discharge,
+    ecgvision,
     fundusvision,
     guidebot,
     labalert,
@@ -238,8 +239,29 @@ check("detects critical ENT alert (mastoiditis)", o_res.has_critical_ent_flag, f
 check("generates otoscopy report", len(o_res.report) > 50, f"report length: {len(o_res.report)}")
 
 
+print("\n=== 15. ECGVision (cardiac ECG diagnostics) ===")
+e_stemi = ecgvision.analyze_ecg_image(
+    image_bytes=img_bytes,
+    file_name="ecg_acute_stemi.png",
+    clinical_context="Severe crushing substernal chest pain with anterior ST elevation",
+    lead_view="12-Lead ECG",
+)
+check("detects emergency STEMI alert", e_stemi.has_critical_cardiac_flag, f"alerts: {e_stemi.alerts}")
+check("alerts include STEMI / Cath Lab warning", any("STEMI" in a for a in e_stemi.alerts))
+
+e_hyperk = ecgvision.analyze_ecg_image(
+    image_bytes=img_bytes,
+    file_name="ecg_hyperkalemia.png",
+    clinical_context="Hyperkalemia K+ 7.2 mEq/L with tall peaked T waves",
+    lead_view="12-Lead ECG",
+)
+check("detects severe hyperkalemia alert", e_hyperk.has_critical_cardiac_flag, f"alerts: {e_hyperk.alerts}")
+check("generates ECG diagnostic report", len(e_stemi.report) > 50, f"report length: {len(e_stemi.report)}")
+
+
 print(f"\n{'=' * 46}")
 print("ALL PASS" if not failures else f"{len(failures)} FAILURE(S): {failures}")
 raise SystemExit(1 if failures else 0)
+
 
 

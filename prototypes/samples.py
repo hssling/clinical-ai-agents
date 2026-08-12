@@ -248,5 +248,31 @@ OTOSCOPE_SAMPLES = [
     },
 ]
 
+# 15. ECGVision Samples
+ECG_SAMPLES = [
+    {
+        "label": "❤️ Baseline: Normal Sinus Rhythm (12-Lead)",
+        "lead_view": "12-Lead ECG",
+        "file_name": "ecg_normal_sinus.png",
+        "context": "42-year-old asymptomatic adult presenting for routine executive health checkup. Heart rate 72 bpm, BP 118/76 mmHg. No chest pain or dyspnea.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "🚨 Emergency: Acute Anterior STEMI (Leads V1-V4)",
+        "lead_view": "12-Lead ECG",
+        "file_name": "ecg_stemi_elevation.png",
+        "context": "58-year-old male presenting with 45 minutes of crushing substernal chest pain radiating to left arm, diaphoresis, and nausea. BP 90/60 mmHg, HR 105 bpm.",
+        "image_b64": TINY_PNG_B64,
+    },
+    {
+        "label": "⚡ Critical: Hyperkalemia Peaked T-Waves (K+ 7.2)",
+        "lead_view": "12-Lead ECG",
+        "file_name": "ecg_hyperkalemia.png",
+        "context": "65-year-old end-stage renal disease patient who missed hemodialysis. Presents with muscle weakness, serum Potassium 7.2 mEq/L, and tall narrow peaked T-waves.",
+        "image_b64": TINY_PNG_B64,
+    },
+]
+
+
 
 
