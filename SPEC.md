@@ -40,7 +40,7 @@
 
 **The agent is made to fail on purpose.** During LIVE TEST, an out-of-scope question is asked and the agent *refuses* rather than fabricates. This is the highest-value minute of the session: it separates the talk from AI hype, discharges the hallucination objection before Q&A, and calls back to the 09:30 governance session.
 
-## 3. The eight clinical prototypes
+## 3. The fifteen clinical prototypes
 
 One core capability each — the progression *is* the argument of the talk.
 
@@ -54,6 +54,13 @@ One core capability each — the progression *is* the argument of the talk.
 | 6 | **LabAlert** | Lab panels → panic value detection & critical alerts | Boundary checks — numerical range validation |
 | 7 | **TrialMatch** | Patient summary vs protocol criteria → matrix breakdown | Reasoning matrix — multi-attribute evaluation |
 | 8 | **DiffCheck** | Symptoms → differential matrix & red-teaming safety checklist | Cognitive debiasing — red-teaming anchoring bias |
+| 9 | **RadVision** | Radiographs → acute consolidation, pneumothorax & fracture alerts | Multimodal clinical vision — image safety triage |
+| 10 | **PathoScan** | Digital pathology biopsy slides → lymphovascular invasion & grading | Malignancy risk detection — histology analysis |
+| 11 | **WoundTrack** | Diabetic foot & pressure ulcers → tissue staging & osteomyelitis flag | Visual wound trajectory — healing progression |
+| 12 | **ChartVision** | Handwritten orders & ICU flowsheets → drug dosage & unit verification | Clinical OCR — prescription transcription |
+| 13 | **FundusVision** | Retinal fundus photography → retinopathy grading & papilledema alert | Ophthalmic screening — neuro-ophthalmology alert |
+| 14 | **OtoscopeAI** | Tympanic membrane otoscopy → AOM staging & mastoiditis red flag | ENT visual diagnostics — otoscopic safety flags |
+| 15 | **ECGVision** | 12-lead ECG telemetry → ST-elevation & STEMI / hyperkalemia safeguards | Electrocardiology emergency triage — acute cardiac red flags |
 
 **TriageAssist ships with a permanent, non-dismissible on-screen banner: "EDUCATIONAL DEMONSTRATION — NOT FOR CLINICAL USE."** Non-negotiable in an accredited session.
 
@@ -61,10 +68,10 @@ One core capability each — the progression *is* the argument of the talk.
 
 ```
 Streamlit app ──► agents/ ──► provider layer ──► Gemini (free tier)
-  8 pages         8 modules    swappable        └─ MOCK_MODE ──► canned replies
+  15 pages        15 modules   swappable        └─ MOCK_MODE ──► canned replies
 ```
 
-- **One app, eight pages, one URL.** Eight browser tabs is an unaffordable risk on stage.
+- **One app, 15 pages, one URL.** Switching browser tabs is an unaffordable risk on stage.
 - **Gemini free tier default.** Free key, no credit card, available in India. Provider layer is swappable to OpenAI/Anthropic in one line.
 - **`MOCK_MODE=1` is the fallback kit, not a toy.** Realistic pre-written responses, zero internet, zero API key. If wifi fails at 12:42, one environment variable keeps the entire demo live. The audience cannot tell.
 - **Hugging Face Spaces for deploy.** Free, public URL, `git push` rebuilds in 60–90s. The rebuild window is covered by the Requirements slide — dead air becomes stagecraft.
