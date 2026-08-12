@@ -4,7 +4,7 @@
 [![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://clinical-ai-agents.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0E8F84.svg)](LICENSE)
 
-**Eight working clinical AI agents, and everything needed to teach how they are built.**
+**Fifteen working clinical AI agents, and everything needed to teach how they are built.**
 
 CME: Artificial Intelligence in Healthcare — From Theory to Clinical Mastery
 Shridevi Institute of Medical Sciences & Research Hospital, Tumkur · Dept. of Anatomy
@@ -18,7 +18,7 @@ Dr. Siddalingaiah H S, Professor, Dept. of Community Medicine
 
 ---
 
-## The eight clinical agents
+## The clinical agents
 
 | # | Agent | Clinical job | Capability it demonstrates |
 |---|---|---|---|
@@ -30,6 +30,14 @@ Dr. Siddalingaiah H S, Professor, Dept. of Community Medicine
 | 6 | **LabAlert** | Lab panels → panic value detection & critical alerts | Numerical boundary check |
 | 7 | **TrialMatch** | Patient summary vs protocol criteria → matrix breakdown | Multi-criteria reasoning matrix |
 | 8 | **DiffCheck** | Symptoms → differential matrix & red-teaming safety checklist | Cognitive debiasing |
+| 9 | **RadVision** | Radiographs → acute consolidation, pneumothorax & fracture alerts | Multimodal clinical vision |
+| 10 | **PathoScan** | Digital pathology biopsy slides → lymphovascular invasion & grading | Malignancy risk detection |
+| 11 | **WoundTrack** | Diabetic foot & pressure ulcers → tissue staging & osteomyelitis flag | Visual wound trajectory |
+| 12 | **ChartVision** | Handwritten orders & ICU flowsheets → drug dosage & unit verification | Clinical OCR & transcription |
+| 13 | **FundusVision** | Retinal fundus photography → retinopathy grading & papilledema alert | Ophthalmic screening |
+| 14 | **OtoscopeAI** | Tympanic membrane otoscopy → AOM staging & mastoiditis red flag | ENT visual diagnostics |
+| 15 | **ECGVision** | 12-lead ECG telemetry → ST-elevation & STEMI / hyperkalemia safeguards | Electrocardiology emergency triage |
+
 
 The progression is the argument: *"AI in medicine" is not one capability, it is multi-faceted, and different capabilities carry distinct clinical risks.*
 
@@ -63,19 +71,30 @@ clinical-ai-agents/
 │   ├─ Build-Your-Own-Clinical-AI-Agent.pptx    28 slides, speaker notes, running clock
 │   └─ build_deck.py                            edit + regenerate the deck
 │
-├─ prototypes/          FOUR WORKING AGENTS
-│   ├─ app.py               Streamlit, 4 pages, one URL
+├─ prototypes/          FIFTEEN WORKING AGENTS
+│   ├─ app.py               Streamlit, 15 pages, one URL
 │   ├─ agents/
 │   │   ├─ provider.py         LLM layer + MOCK_MODE (the offline fallback)
 │   │   ├─ retrieval.py        local keyword search — no network, ever
 │   │   ├─ guidebot.py         1 · grounding, citation, refusal   ⭐ built live
 │   │   ├─ discharge.py        2 · structured output + identifier check
 │   │   ├─ triage.py           3 · the agentic loop + red flags
-│   │   └─ screenmate.py       4 · batch screening, machine-readable
+│   │   ├─ screenmate.py       4 · batch screening, machine-readable
+│   │   ├─ pharmguard.py       5 · drug safety overrides & renal checks
+│   │   ├─ labalert.py         6 · lab panic value numerical boundary alerts
+│   │   ├─ trialmatch.py       7 · patient vs clinical trial eligibility matrix
+│   │   ├─ diffcheck.py        8 · cognitive debiasing & red-teaming checklist
+│   │   ├─ multimodal.py       9 · RadVision radiology multimodal vision
+│   │   ├─ pathoscan.py        10 · PathoScan digital pathology analysis
+│   │   ├─ woundtrack.py       11 · WoundTrack visual wound staging & osteomyelitis flag
+│   │   ├─ chartvision.py      12 · ChartVision prescription & ICU flowsheet OCR
+│   │   ├─ fundusvision.py     13 · FundusVision retinal screening & papilledema alert
+│   │   ├─ otoscope.py         14 · OtoscopeAI ENT otoscopy & mastoiditis red flag
+│   │   └─ ecgvision.py        15 · ECGVision 12-lead ECG telemetry & STEMI safeguards
 │   ├─ data/guidelines/     3 condensed national programme extracts
 │   ├─ samples.py           one-click demo inputs (never type on stage)
 │   ├─ test_grounding.py    12 checks on the refusal guardrail
-│   └─ test_agents.py       17 checks across all four agents
+│   └─ test_agents.py       headless tests across all 15 agents
 │
 ├─ run-sheet/
 │   ├─ stage-script.md          minute-by-minute, with the exact words
@@ -177,7 +196,7 @@ It names the active provider, sends a real request, and diagnoses the failure if
 ```bash
 cd prototypes
 MOCK_MODE=1 python test_grounding.py    # 12 checks on the refusal guardrail
-MOCK_MODE=1 python test_agents.py       # 17 checks across all four agents
+MOCK_MODE=1 python test_agents.py       # Headless checks across all 15 agents
 ```
 
 ---
